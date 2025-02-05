@@ -27,7 +27,7 @@ pub async fn run(args: Vec<OsString>) -> Result<(), AppError> {
     let test_run = flags.test_run;
 
     if !test_run {
-       log_helper::setup_log(&params.log_folder, &params.source_file_name)?;
+       log_helper::setup_log(&params.log_folder)?;
        log_helper::log_startup_params(&params);
     }
             
