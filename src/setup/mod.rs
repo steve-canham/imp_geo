@@ -75,10 +75,11 @@ pub async fn get_params(args: Vec<OsString>) -> Result<InitParams, AppError> {
         // Normal import and / or processing and / or outputting
         // If folder name also given in CL args the CL version takes precedence
 
-        let source_file_path = "./config_r_umls.toml".to_string();
-        let config_file: Config = config_reader::populate_config_vars(&source_file_path)?; 
-        let file_pars = config_file.files;  // guaranteed to exist
+        let config_file_path = "./config_imp_geo.toml".to_string();
+        let config_string: String = fs::read_to_string(config_file_path)?;
 
+        let config_file: Config = config_reader::populate_config_vars(&config_string)?; 
+        let file_pars = config_file.files;  // guaranteed to exist
         let empty_pb = PathBuf::from("");
         let mut data_folder_good = true;
 

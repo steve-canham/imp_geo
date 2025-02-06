@@ -127,11 +127,11 @@ mod tests {
 
     #[test]
     fn check_cli_no_explicit_params() {
-        let target = &"target\\debug\\ror1.exe".replace("\\", "/");
+        let target = "dummy target";
         let args : Vec<&str> = vec![target];
         let test_args = args.iter().map(|x| x.to_string().into()).collect::<Vec<OsString>>();
         let res = fetch_valid_arguments(test_args).unwrap();
-        assert_eq!(res.import_data, true);
+        assert_eq!(res.import_data, false);
         assert_eq!(res.export_data, false);
         assert_eq!(res.initialise, false);
         assert_eq!(res.create_config, false);
@@ -139,14 +139,14 @@ mod tests {
     }
   
     #[test]
-    fn check_cli_with_a_flag() {
-        let target = &"target\\debug\\ror1.exe".replace("\\", "/");
-        let args : Vec<&str> = vec![target, "-a"];
+    fn check_cli_with_r_flag() {
+        let target = "dummy target";
+        let args : Vec<&str> = vec![target, "-r"];
         let test_args = args.iter().map(|x| x.to_string().into()).collect::<Vec<OsString>>();
 
         let res = fetch_valid_arguments(test_args).unwrap();
         assert_eq!(res.import_data, true);
-        assert_eq!(res.export_data, true);
+        assert_eq!(res.export_data, false);
         assert_eq!(res.initialise, false);
         assert_eq!(res.create_config, false);
         assert_eq!(res.test_run, false);
@@ -154,8 +154,39 @@ mod tests {
     }
 
     #[test]
+    fn check_cli_with_x_flag() {
+        let target = "dummy target";
+        let args : Vec<&str> = vec![target, "-x"];
+        let test_args = args.iter().map(|x| x.to_string().into()).collect::<Vec<OsString>>();
+
+        let res = fetch_valid_arguments(test_args).unwrap();
+        assert_eq!(res.import_data, false);
+        assert_eq!(res.export_data, true);
+        assert_eq!(res.initialise, false);
+        assert_eq!(res.create_config, false);
+        assert_eq!(res.test_run, false);
+
+    }
+
+
+    #[test]
+    fn check_cli_with_r_and_z_flag() {
+        let target = "dummy target";
+        let args : Vec<&str> = vec![target, "-r", "-z"];
+        let test_args = args.iter().map(|x| x.to_string().into()).collect::<Vec<OsString>>();
+
+        let res = fetch_valid_arguments(test_args).unwrap();
+        assert_eq!(res.import_data, true);
+        assert_eq!(res.export_data, false);
+        assert_eq!(res.initialise, false);
+        assert_eq!(res.create_config, false);
+        assert_eq!(res.test_run, true);
+
+    }
+
+    #[test]
     fn check_cli_with_i_flag() {
-        let target = &"target\\debug\\ror1.exe".replace("\\", "/");
+        let target = "dummy target";
         let args : Vec<&str> = vec![target, "-i"];
         let test_args = args.iter().map(|x| x.to_string().into()).collect::<Vec<OsString>>();
 
@@ -168,9 +199,9 @@ mod tests {
     }
 
     #[test]
-    fn check_cli_with_c_and_m_flags() {
-        let target = &"target\\debug\\ror1.exe".replace("\\", "/");
-        let args : Vec<&str> = vec![target, "-c", "-m"];
+    fn check_cli_with_c_and_j_flags() {
+        let target = "dummy target";
+        let args : Vec<&str> = vec![target, "-c", "-j"];
         let test_args = args.iter().map(|x| x.to_string().into()).collect::<Vec<OsString>>();
 
         let res = fetch_valid_arguments(test_args).unwrap();
@@ -183,9 +214,9 @@ mod tests {
 
 
     #[test]
-    fn check_cli_with_c_and_p_flag() {
-        let target = &"target\\debug\\ror1.exe".replace("\\", "/");
-        let args : Vec<&str> = vec![target, "-c", "-p"];
+    fn check_cli_with_c_and_r_flag() {
+        let target = "dummy target";
+        let args : Vec<&str> = vec![target, "-c", "-r"];
         let test_args = args.iter().map(|x| x.to_string().into()).collect::<Vec<OsString>>();
 
         let res = fetch_valid_arguments(test_args).unwrap();
@@ -196,35 +227,6 @@ mod tests {
         assert_eq!(res.test_run, false);
     }
 
-    #[test]
-    fn check_cli_with_explicit_string_pars() {
-        let target = &"target\\debug\\ror1.exe".replace("\\", "/");
-        let args : Vec<&str> = vec![target, "-f", "E:\\ROR\\some data folder", 
-                                    "-s", "schema2 data.json", "-d", "2025-12-25", "-v", "1.62"];
-        let test_args = args.iter().map(|x| x.to_string().into()).collect::<Vec<OsString>>();
-
-        let res = fetch_valid_arguments(test_args).unwrap();
-        assert_eq!(res.import_data, true);
-        assert_eq!(res.export_data, false);
-        assert_eq!(res.initialise, false);
-        assert_eq!(res.create_config, false);
-        assert_eq!(res.test_run, false);
-    }
-
-    #[test]
-    fn check_cli_with_most_params_explicit() {
-        let target = &"target\\debug\\ror1.exe".replace("\\", "/");
-        let args : Vec<&str> = vec![target, "-f", "E:\\ROR\\some other data folder", 
-        "-s", "schema2.1 data.json", "-d", "2026-12-25", "-v", "1.63", "-r", "-p", "-t", "-z"];
-        let test_args = args.iter().map(|x| x.to_string().into()).collect::<Vec<OsString>>();
-
-        let res = fetch_valid_arguments(test_args).unwrap();
-        assert_eq!(res.import_data, true);
-        assert_eq!(res.export_data, true);
-        assert_eq!(res.initialise, false);
-        assert_eq!(res.create_config, false);
-        assert_eq!(res.test_run, true);
-    }
 
 }
 
