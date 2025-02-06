@@ -249,7 +249,7 @@ fn verify_db_parameters(toml_database: TomlDBPars) -> Result<DBPars, AppError> {
     let db_port_as_string = check_db_par (toml_database.db_port, "DB port", "5432");
     let db_port: usize = db_port_as_string.parse().unwrap_or_else(|_| 5432);
 
-    let db_name = check_db_par (toml_database.db_name, "DB name", "ror");
+    let db_name = check_db_par (toml_database.db_name, "DB name", "geo");
 
     Ok(DBPars {
         db_host,
@@ -351,22 +351,22 @@ mod tests {
 data_date="2026-06-15"
 
 [files]
-data_folder_path="E:\\MDR source data\\ROR\\data"
-log_folder_path="E:\\MDR source data\\ROR\\logs"
-output_folder_path="E:\\MDR source data\\ROR\\outputs"
+data_folder_path="E:\\MDR source data\\Geonames\\data"
+log_folder_path="E:\\MDR source data\\Geonames\\logs"
+output_folder_path="E:\\MDR source data\\Geonames\\outputs"
 
 [database]
 db_host="localhost"
 db_user="user_name"
 db_password="password"
 db_port="5433"
-db_name="ror"
+db_name="geo"
 "#;
         let config_string = config.to_string();
         let res = populate_config_vars(&config_string).unwrap();
-        assert_eq!(res.files.data_folder_path, PathBuf::from("E:\\MDR source data\\ROR\\data"));
-        assert_eq!(res.files.log_folder_path, PathBuf::from("E:\\MDR source data\\ROR\\logs"));
-        assert_eq!(res.files.output_folder_path, PathBuf::from("E:\\MDR source data\\ROR\\outputs"));
+        assert_eq!(res.files.data_folder_path, PathBuf::from("E:\\MDR source data\\Geonames\\data"));
+        assert_eq!(res.files.log_folder_path, PathBuf::from("E:\\MDR source data\\Geonames\\logs"));
+        assert_eq!(res.files.output_folder_path, PathBuf::from("E:\\MDR source data\\Geonames\\outputs"));
 
         assert_eq!(res.data_details.data_date, "2026-06-15");
 
@@ -374,7 +374,7 @@ db_name="ror"
         assert_eq!(res.db_pars.db_user, "user_name");
         assert_eq!(res.db_pars.db_password, "password");
         assert_eq!(res.db_pars.db_port, 5433);
-        assert_eq!(res.db_pars.db_name, "ror");
+        assert_eq!(res.db_pars.db_name, "geo");
     }
 
 
@@ -386,20 +386,20 @@ db_name="ror"
 data_date="2026-06-15"
 
 [files]
-data_folder_path="E:\\MDR source data\\ROR\\data"
+data_folder_path="E:\\MDR source data\\Geonames\\data"
 
 [database]
 db_host="localhost"
 db_user="user_name"
 db_password="password"
 db_port="5433"
-db_name="ror"
+db_name="geo"
 "#;
         let config_string = config.to_string();
         let res = populate_config_vars(&config_string).unwrap();
-        assert_eq!(res.files.data_folder_path, PathBuf::from("E:\\MDR source data\\ROR\\data"));
-        assert_eq!(res.files.log_folder_path, PathBuf::from("E:\\MDR source data\\ROR\\data"));
-        assert_eq!(res.files.output_folder_path, PathBuf::from("E:\\MDR source data\\ROR\\data"));
+        assert_eq!(res.files.data_folder_path, PathBuf::from("E:\\MDR source data\\Geonames\\data"));
+        assert_eq!(res.files.log_folder_path, PathBuf::from("E:\\MDR source data\\Geonames\\data"));
+        assert_eq!(res.files.output_folder_path, PathBuf::from("E:\\MDR source data\\Geonames\\data"));
     }
 
 
@@ -411,7 +411,7 @@ db_name="ror"
 data_date="2026-06-15"
 
 [files]
-data_folder_path="E:\\MDR source data\\ROR\\data"
+data_folder_path="E:\\MDR source data\\Geonames\\data"
 log_folder_path=""
 output_folder_path=""
 
@@ -420,13 +420,13 @@ db_host="localhost"
 db_user="user_name"
 db_password="password"
 db_port="5433"
-db_name="ror"
+db_name="geo"
 "#;
         let config_string = config.to_string();
         let res = populate_config_vars(&config_string).unwrap();
-        assert_eq!(res.files.data_folder_path, PathBuf::from("E:\\MDR source data\\ROR\\data"));
-        assert_eq!(res.files.log_folder_path, PathBuf::from("E:\\MDR source data\\ROR\\data"));
-        assert_eq!(res.files.output_folder_path, PathBuf::from("E:\\MDR source data\\ROR\\data"));
+        assert_eq!(res.files.data_folder_path, PathBuf::from("E:\\MDR source data\\Geonames\\data"));
+        assert_eq!(res.files.log_folder_path, PathBuf::from("E:\\MDR source data\\Geonames\\data"));
+        assert_eq!(res.files.output_folder_path, PathBuf::from("E:\\MDR source data\\Geonames\\data"));
     }
 
 
@@ -435,22 +435,22 @@ db_name="ror"
 
         let config = r#"
 [files]
-data_folder_path="E:\\MDR source data\\ROR\\data"
-log_folder_path="E:\\MDR source data\\ROR\\logs"
-output_folder_path="E:\\MDR source data\\ROR\\outputs"
+data_folder_path="E:\\MDR source data\\Geonames\\data"
+log_folder_path="E:\\MDR source data\\Geonames\\logs"
+output_folder_path="E:\\MDR source data\\Geonames\\outputs"
 
 [database]
 db_host="localhost"
 db_user="user_name"
 db_password="password"
 db_port="5433"
-db_name="ror"
+db_name="geo"
 "#;
         let config_string = config.to_string();
         let res = populate_config_vars(&config_string).unwrap();
-        assert_eq!(res.files.data_folder_path, PathBuf::from("E:\\MDR source data\\ROR\\data"));
-        assert_eq!(res.files.log_folder_path, PathBuf::from("E:\\MDR source data\\ROR\\logs"));
-        assert_eq!(res.files.output_folder_path, PathBuf::from("E:\\MDR source data\\ROR\\outputs"));
+        assert_eq!(res.files.data_folder_path, PathBuf::from("E:\\MDR source data\\Geonames\\data"));
+        assert_eq!(res.files.log_folder_path, PathBuf::from("E:\\MDR source data\\Geonames\\logs"));
+        assert_eq!(res.files.output_folder_path, PathBuf::from("E:\\MDR source data\\Geonames\\outputs"));
 
         assert_eq!(res.data_details.data_date, "");
 
@@ -458,7 +458,7 @@ db_name="ror"
         assert_eq!(res.db_pars.db_user, "user_name");
         assert_eq!(res.db_pars.db_password, "password");
         assert_eq!(res.db_pars.db_port, 5433);
-        assert_eq!(res.db_pars.db_name, "ror");
+        assert_eq!(res.db_pars.db_name, "geo");
     }
 
 
@@ -470,15 +470,15 @@ db_name="ror"
 data_date="2026-06-15"
 
 [files]
-log_folder_path="E:\\MDR source data\\ROR\\logs"
-output_folder_path="E:\\MDR source data\\ROR\\outputs"
+log_folder_path="E:\\MDR source data\\Geonames\\logs"
+output_folder_path="E:\\MDR source data\\Geonames\\outputs"
 
 [database]
 db_host="localhost"
 db_user="user_name"
 db_password="password"
 db_port="5433"
-db_name="ror"
+db_name="geo"
 "#;
         let config_string = config.to_string();
         let _res = populate_config_vars(&config_string).unwrap();
@@ -494,16 +494,16 @@ db_name="ror"
 data_date="2026-06-15"
 
 [files]
-data_folder_path="E:\\MDR source data\\ROR\\data"
-log_folder_path="E:\\MDR source data\\ROR\\logs"
-output_folder_path="E:\\MDR source data\\ROR\\outputs"
+data_folder_path="E:\\MDR source data\\Geonames\\data"
+log_folder_path="E:\\MDR source data\\Geonames\\logs"
+output_folder_path="E:\\MDR source data\\Geonames\\outputs"
 
 [database]
 db_host="localhost"
 db_user=""
 db_password="password"
 db_port="5433"
-db_name="ror"
+db_name="geo"
 "#;
         let config_string = config.to_string();
         let _res = populate_config_vars(&config_string).unwrap();
@@ -518,9 +518,9 @@ db_name="ror"
 data_date="2026-06-15"
 
 [files]
-data_folder_path="E:\\MDR source data\\ROR\\data"
-log_folder_path="E:\\MDR source data\\ROR\\logs"
-output_folder_path="E:\\MDR source data\\ROR\\outputs"
+data_folder_path="E:\\MDR source data\\Geonames\\data"
+log_folder_path="E:\\MDR source data\\Geonames\\logs"
+output_folder_path="E:\\MDR source data\\Geonames\\outputs"
 
 [database]
 db_user="user_name"
@@ -532,7 +532,7 @@ db_password="password"
         assert_eq!(res.db_pars.db_user, "user_name");
         assert_eq!(res.db_pars.db_password, "password");
         assert_eq!(res.db_pars.db_port, 5432);
-        assert_eq!(res.db_pars.db_name, "ror");
+        assert_eq!(res.db_pars.db_name, "geo");
     }
 
 
@@ -541,16 +541,16 @@ db_password="password"
 
         let config = r#"
 [files]
-data_folder_path="E:\\MDR source data\\ROR\\data"
-log_folder_path="E:\\MDR source data\\ROR\\logs"
-output_folder_path="E:\\MDR source data\\ROR\\outputs"
+data_folder_path="E:\\MDR source data\\Geonames\\data"
+log_folder_path="E:\\MDR source data\\Geonames\\logs"
+output_folder_path="E:\\MDR source data\\Geonames\\outputs"
 
 [database]
 db_host="localhost"
 db_user="user_name"
 db_password="password"
 db_port=""
-db_name="ror"
+db_name="geo"
 
 "#;
         let config_string = config.to_string();
@@ -562,7 +562,7 @@ db_name="ror"
         assert_eq!(res.db_pars.db_user, "user_name");
         assert_eq!(res.db_pars.db_password, "password");
         assert_eq!(res.db_pars.db_port, 5432);
-        assert_eq!(res.db_pars.db_name, "ror");
+        assert_eq!(res.db_pars.db_name, "geo");
     }
 
 

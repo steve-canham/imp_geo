@@ -6,9 +6,9 @@ data_date=""
 
 
 [files]
-data_folder_path="E:\\MDR source data\\UMLS\\data"
-log_folder_path="E:\\MDR source data\\UMLS\\logs"
-output_folder_path="E:\\MDR source data\\UMLS\\outputs"
+data_folder_path="E:\\MDR source data\\Geonames\\data"
+log_folder_path="E:\\MDR source data\\Geonames\\logs"
+output_folder_path="E:\\MDR source data\\Geonames\\outputs"
 
 
 [database]
