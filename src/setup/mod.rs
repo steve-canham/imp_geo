@@ -32,15 +32,7 @@ use std::fs;
 use std::time::Duration;
 use sqlx::ConnectOptions;
 use config_reader::Config;
-
-#[derive(Debug, Clone, Copy)]
-pub struct Flags {
-    pub import_data: bool,
-    pub export_data: bool,
-    pub create_config: bool,
-    pub initialise: bool,
-    pub test_run: bool,
-}
+use cli_reader::Flags;
 
 pub struct InitParams {
     pub data_folder: PathBuf,
@@ -50,7 +42,7 @@ pub struct InitParams {
     pub flags: Flags,
 }
 
-pub async fn get_params(args: Vec<OsString>) -> Result<InitParams, AppError> {
+pub async fn get_params(args: Vec<OsString>, config_string: String) -> Result<InitParams, AppError> {
 
     // Called from main as the initial task of the program.
     // Returns a struct that contains the program's parameters.
@@ -74,9 +66,6 @@ pub async fn get_params(args: Vec<OsString>) -> Result<InitParams, AppError> {
 
         // Normal import and / or processing and / or outputting
         // If folder name also given in CL args the CL version takes precedence
-
-        let config_file_path = "./config_imp_geo.toml".to_string();
-        let config_string: String = fs::read_to_string(config_file_path)?;
 
         let config_file: Config = config_reader::populate_config_vars(&config_string)?; 
         let file_pars = config_file.files;  // guaranteed to exist
@@ -193,75 +182,7 @@ pub async fn get_db_pool() -> Result<PgPool, AppError> {
 
 mod tests {
     use super::*;
-   
-   // regex tests
-   #[test]
-   fn check_file_name_regex_works_1 () {
-      let test_file_name = "v1.50 2024-12-11.json".to_string();
-      assert_eq!(is_compliant_file_name(&test_file_name), true);
-      assert_eq!(get_data_version(&test_file_name), "v1.50");
-      assert_eq!(get_data_date(&test_file_name), "2024-12-11");
-   }
-
-   #[test]
-   fn check_file_name_regex_works_2 () {
-      let test_file_name = "v1.50-2024-12-11.json".to_string();
-      assert_eq!(is_compliant_file_name(&test_file_name), true);
-      assert_eq!(get_data_version(&test_file_name), "v1.50");
-      assert_eq!(get_data_date(&test_file_name), "2024-12-11");
-   }  
-
-   #[test]
-   fn check_file_name_regex_works_3 () {
-      let test_file_name = "v1.50 20241211.json".to_string();
-      assert_eq!(is_compliant_file_name(&test_file_name), true);
-      assert_eq!(get_data_version(&test_file_name), "v1.50");
-      assert_eq!(get_data_date(&test_file_name), "2024-12-11");
-   }
-
-   #[test]
-   fn check_file_name_regex_works_4 () {
-      let test_file_name = "v1.50-20241211.json".to_string();
-      assert_eq!(is_compliant_file_name(&test_file_name), true);
-      assert_eq!(get_data_version(&test_file_name), "v1.50");
-      assert_eq!(get_data_date(&test_file_name), "2024-12-11");
-   }
-
-   #[test]
-   fn check_file_name_regex_works_5 () {
-      let test_file_name = "v1.50-2024-1211.json".to_string();
-      assert_eq!(is_compliant_file_name(&test_file_name), true);
-      assert_eq!(get_data_version(&test_file_name), "v1.50");
-      assert_eq!(get_data_date(&test_file_name), "2024-12-11");
-   }
-
-   #[test]
-   fn check_file_name_regex_works_6 () {
-      let test_file_name = "v1.59-2025-01-23-ror-data_schema_v2.json".to_string();
-      assert_eq!(is_compliant_file_name(&test_file_name), true);
-      assert_eq!(get_data_version(&test_file_name), "v1.59");
-      assert_eq!(get_data_date(&test_file_name), "2025-01-23");
-   }
-   
-   #[test]
-    fn check_file_name_regex_works_7 () {
-        let test_file_name = "1.50 2024-12-11.json".to_string();
-        assert_eq!(is_compliant_file_name(&test_file_name), false);
-
-        let test_file_name = "v1.50--2024-12-11.json".to_string();
-        assert_eq!(is_compliant_file_name(&test_file_name), false);
-
-        let test_file_name = "v1.50  20241211.json".to_string();
-        assert_eq!(is_compliant_file_name(&test_file_name), false);
-
-        let test_file_name = "v1.50 20242211.json".to_string();
-        assert_eq!(is_compliant_file_name(&test_file_name), false);
-
-        let test_file_name = "v1.50.20241211.json".to_string();
-        assert_eq!(is_compliant_file_name(&test_file_name), false);
-    }
-}
-    */
+          
     // Ensure the parameters are being correctly extracted from the CLI arguments
     // The testing functions need to be async because of the call to get_params.
     // the test therefore uses the async version of the temp_env::with_vars function.
@@ -271,22 +192,20 @@ mod tests {
     // in multiple complaints from the compiler. The async block can also
     // be replaced by a separate async function and called explicitly.
  
- /* 
+  
     #[tokio::test]
     async fn check_env_vars_overwrite_blank_cli_values() {
 
         // Note that in most cases the folder path given must exist, and be 
         // accessible, or get_params will panic and an error will be thrown. 
 
-        temp_env::async_with_vars(
-        [
+        
             ("data_folder_path", Some("E:/ROR/data")),
             ("src_file_name", Some("v1.58 20241211.json")),
             ("output_file_name", Some("results 25.json")),
             ("data_version", Some("v1.60")),
             ("data_date", Some("2025-12-11")),
 
-        ],
         async { 
             let args : Vec<&str> = vec!["target/debug/ror1.exe"];
             let test_args = args.iter().map(|x| x.to_string().into()).collect::<Vec<OsString>>();

@@ -1,13 +1,10 @@
 pub mod setup;
-//mod import;
-//mod process;
-//mod summarise;
-//mod export;
 pub mod error_defs;
 
 use error_defs::AppError;
 use setup::log_helper;
 use std::ffi::OsString;
+use std::fs;
 
 pub async fn run(args: Vec<OsString>) -> Result<(), AppError> {
     
@@ -20,9 +17,9 @@ pub async fn run(args: Vec<OsString>) -> Result<(), AppError> {
     // The initial parameters are recorded as the initial part of the log.
     // 3) The database connection pool is established for the database "ror".
 
-    println!("Hello, world!");
+    let config_string: String = fs::read_to_string("./app_config.toml".to_string())?;
     
-    let params = setup::get_params(args).await?;
+    let params = setup::get_params(args, config_string).await?;
     let flags = params.flags;
     let test_run = flags.test_run;
 
