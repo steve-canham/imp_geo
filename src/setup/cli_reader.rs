@@ -3,7 +3,7 @@
  ***************************************************************************/
 
 use clap::{command, Arg, ArgMatches};
-use crate::error_defs::AppError;
+use crate::AppError;
 use std::ffi::OsString;
 
 #[derive(Debug, Clone, Copy)]
@@ -65,7 +65,7 @@ pub fn fetch_valid_arguments(args: Vec<OsString>) -> Result<Flags, AppError>
 }
 
 
-fn parse_args(args: Vec<OsString>) -> Result<ArgMatches, clap::Error> {
+fn parse_args(args: Vec<OsString>) -> Result<ArgMatches, AppError> {
 
     command!()
         .about("Imports data from ROR json file (v2) and imports it into a database")
@@ -118,7 +118,8 @@ fn parse_args(args: Vec<OsString>) -> Result<ArgMatches, clap::Error> {
             .action(clap::ArgAction::SetTrue)
        )
     .try_get_matches_from(args)
-
+    .map_err(|e| AppError::ClapError(e))
+    
 }
 
 

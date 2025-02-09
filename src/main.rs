@@ -1,5 +1,5 @@
 
-use imp_geo::error_defs::AppError;
+use imp_geo::AppError;
 use imp_geo::run;
 use std::env;
 

@@ -1,7 +1,6 @@
 pub mod setup;
-pub mod error_defs;
 
-use error_defs::AppError;
+use thiserror::Error;
 use setup::log_helper;
 use std::ffi::OsString;
 use std::fs;
@@ -28,7 +27,45 @@ pub async fn run(args: Vec<OsString>) -> Result<(), AppError> {
        log_helper::log_startup_params(&params);
     }
             
-    let _pool = setup::get_db_pool().await?;
+    let _pool = setup::get_db_pool().await?; 
 
     Ok(())
 }
+
+
+
+
+// The error types used within the program.
+
+#[derive(Error, Debug)]
+pub enum AppError {
+
+    #[error("Error when processing command line arguments: {0}")]
+    ClapError(#[from] clap::Error),
+
+    #[error("Error when processing sql: {0}")]
+    SqlxError(#[from] sqlx::Error),
+
+    #[error("Error during IO operation: {0}")]
+    IoError(#[from] std::io::Error),
+
+    #[error("JSON processing error: {0}")]
+    SerdeError(#[from] serde_json::Error),
+
+    #[error("Error when setting up log configuration: {0}")]
+    LogSetError(#[from] log::SetLoggerError),
+
+    #[error("Database Parameter Unavailable: {0} ")]
+    MissingDatabaseParameter(String),
+
+    #[error("CRITICAL Config Error - {0}")]
+    CriticalConfigError(String),
+
+    #[error("The folder '{0}' is required, but has not been supplied or is not accessible")]
+    MissingFolder(String),
+
+    #[error("The parameter '{0}' is required, but has not been supplied")]
+    MissingParameter(String),
+
+}
+

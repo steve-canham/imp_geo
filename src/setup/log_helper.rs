@@ -7,7 +7,7 @@
 
 use chrono::Local;
 use std::path::PathBuf;
-use crate::error_defs::AppError;
+use crate::AppError;
 use crate::setup::InitParams;
 
 use log::{info, LevelFilter};
@@ -45,7 +45,7 @@ fn config_log (log_file_path: &PathBuf) -> Result<log4rs::Handle, AppError> {
         .build(log_file_path);
     let logfile = match try_logfile {
         Ok(lf) => lf,
-        Err(e) => return Err(AppError::IoErr(e)),
+        Err(e) => return Err(AppError::IoError(e)),
     };
 
     // Configure and build log4rs instance, using the two appenders described above
@@ -64,7 +64,7 @@ fn config_log (log_file_path: &PathBuf) -> Result<log4rs::Handle, AppError> {
     match log4rs::init_config(config)
     {
         Ok(h) => return Ok(h),
-        Err(e) => return Err(AppError::LgErr(e)),
+        Err(e) => return Err(AppError::LogSetError(e)),
     };
 
 }

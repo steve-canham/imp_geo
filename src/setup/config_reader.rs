@@ -1,31 +1,12 @@
 /***************************************************************************
- * Module uses std::env to read environmental values from an .env file 
- * (must be in same folder as src). These include the database parameters, 
- * which are loaded into a static singleton value, to allow it to be 
- * interrogated later in the program if necessary. During setup, however, 
- * the DB parameters are only used to provide a database connection string 
- * for any specified database.
- * The .env file also contains the default names for the overall folder path 
- * (used for both source data and logs) and for the source and results file 
- * name. 
  * 
- * Database parameters MUST be provided and be valid or the program can not
- * continue. 
- * The folder path and the source file name have defaults but these should 
- * NOT normally be used. They are there only as placeholders, to be overwritten by 
- * values provided as string arguments in the command line or the .env file. 
- * In other words the folder path and the source file name MUST be present 
- * EITHER in the .env file OR in the CLI arguments. 
- * If both, the CLI arguments take precedence.
- * The results file name has a timestamped default name that will be used if 
- * none is provided explicitly.
  ***************************************************************************/
 
 use std::sync::OnceLock;
 use toml;
 use serde::Deserialize;
-use crate::error_defs::{AppError, CustomError};
 use std::path::PathBuf;
+use crate::AppError;
 
 pub static DB_PARS: OnceLock<DBPars> = OnceLock::new();
 
@@ -85,23 +66,21 @@ pub struct DBPars {
 
 pub fn populate_config_vars(config_string: &String) -> Result<Config, AppError> {
 
-    let toml_config = match toml::from_str::<TomlConfig>(&config_string)
-    {
-        Ok(c) => c,
-        Err(_) => { 
-            let app_err = report_critical_error ("open config file", 
-            "the correct name, form and is in the correct location");
-            return Result::Err(app_err)   // return error to calling function
-        },
-    };
-
+    let toml_config = toml::from_str::<TomlConfig>(&config_string)
+        .map_err(|_| {
+            let problem = r#"Unable to open config file - the program cannot continue. 
+            Please check config file ('app_config.toml') has the 
+            correct name, form and is in the correct location ."#.to_string(); 
+            AppError::CriticalConfigError(problem)
+        }
+    )?;
 
     let toml_data_details = match toml_config.data {
         Some(d) => d,
         None => {
             println!("Data detals section not found in config file.");
             TomlDataPars {
-                data_date: None,
+                data_date: None,  // Legitimate in some circumstances
             }
         },
     };
@@ -109,27 +88,28 @@ pub fn populate_config_vars(config_string: &String) -> Result<Config, AppError> 
     let toml_database = match toml_config.database {
         Some(d) => d,
         None => {
-            let app_err = report_critical_error ("read DB parameters from config file", 
-            "a set of values under table 'database'");
-            return Result::Err(app_err)
+            let problem = r#"Unable to read any DB parameters - the program cannot continue. 
+            Please check the config file has a set of appropriate values listed
+            under '[database]'"#.to_string(); 
+            return Result::Err(AppError::CriticalConfigError(problem))  
         },
     };
-
 
     let toml_files = match toml_config.files {
         Some(f) => f,
         None => {
-            let app_err = report_critical_error ("read file parameters from config file", 
-            "a set of values under table 'files'");
-            return Result::Err(app_err)
+            let problem = r#"Unable to read any file parameters - the program cannot continue. 
+            Please check the config file has a set of appropriate values listed
+            under '[files]'"#.to_string();  
+            return Result::Err(AppError::CriticalConfigError(problem))  
         },
     };
    
     let config_files = verify_file_parameters(toml_files)?;
-    let config_data_dets = verify_data_parameters(toml_data_details)?;
+    let config_data_dets = verify_data_parameters(toml_data_details);
     let config_db_pars = verify_db_parameters(toml_database)?;
 
-    let _ = DB_PARS.set(config_db_pars.clone());
+    let _ = DB_PARS.set(config_db_pars.clone()); 
 
     Ok(Config{
         data_details: config_data_dets,
@@ -139,45 +119,28 @@ pub fn populate_config_vars(config_string: &String) -> Result<Config, AppError> 
 }
 
 
-fn report_critical_error (error_suffix: &str, sec2: &str) -> AppError {
- 
-    let print_msg = r#"CRITICAL ERROR - Unable to "#.to_string() + error_suffix + r#" - 
-    program cannot continue. Please check config file ('config_imp_ror.toml') 
-    has "# + sec2;
-    println!("{}", print_msg);
-
-    let err_msg = format!("CRITICAL ERROR - Unable to {}", error_suffix);
-    let cf_err = CustomError::new(&err_msg);
-
-    AppError::CsErr(cf_err) 
-}
-
-
-
-fn verify_data_parameters(toml_data_pars: TomlDataPars) -> Result<DataPars, AppError> {
+fn verify_data_parameters(toml_data_pars: TomlDataPars) -> DataPars {
 
     let data_date = match toml_data_pars.data_date {
         Some(s) => s,
         None => "".to_string(),
     };
 
-    Ok(DataPars {
+    DataPars {
         data_date,
-    })
+    }
 }
-
 
 
 fn verify_file_parameters(toml_files: TomlFilePars) -> Result<FilePars, AppError> {
 
-    // Check data folder and source file first as there are no defaults for these values.
-    // They must therefore be present.
+    // Check data folder first as there are no default for this.
+    // It must therefore be present.
 
-    // Check data folder and source file first as there are no defaults for these values.
-    // They must therefore be present.
-
-    let data_folder_path = check_critical_pathbuf (toml_files.data_folder_path, "read data folder path from config file", 
-               "a value for data_folder_path")?;
+    let data_folder_path = check_critical_pathbuf (toml_files.data_folder_path, 
+                            "Unable to read the data folder path in config file.",
+                            "has a value for the data_folder_path",
+               )?;
 
     let log_folder_path = check_pathbuf (toml_files.log_folder_path, "log folder", &data_folder_path);
 
@@ -191,7 +154,7 @@ fn verify_file_parameters(toml_files: TomlFilePars) -> Result<FilePars, AppError
 }
 
 
-fn check_critical_pathbuf (src_name: Option<String>, sec2: &str, error_suffix: &str) -> Result<PathBuf, AppError> {
+fn check_critical_pathbuf (src_name: Option<String>, problem: &str, action: &str) -> Result<PathBuf, AppError> {
  
     let s = match src_name {
         Some(s) => s,
@@ -200,14 +163,10 @@ fn check_critical_pathbuf (src_name: Option<String>, sec2: &str, error_suffix: &
 
     if s == "none".to_string() || s.trim() == "".to_string()
     {
-        let print_msg = r#"CRITICAL ERROR - Unable to "#.to_string() + error_suffix + r#" - 
-        program cannot continue. Please check config file ('config_imp_ror.toml') 
-        has "# + sec2;
-        println!("{}", print_msg);
-    
-        let err_msg = format!("CRITICAL ERROR - Unable to {}", error_suffix);
-        let cf_err = CustomError::new(&err_msg);
-        Err(AppError::CsErr(cf_err))
+        let err_msg = problem.to_string() + r#"
+        The program cannot continue. 
+        Please check the config file ('app_config.toml') "# + action;
+        Err(AppError::CriticalConfigError(err_msg))
     }
     else {
         Ok(PathBuf::from(s))
@@ -240,9 +199,11 @@ fn verify_db_parameters(toml_database: TomlDBPars) -> Result<DBPars, AppError> {
  // Check user name and password first as there are no defaults for these values.
     // They must therefore be present.
 
-    let db_user = check_critical_db_par (toml_database.db_user , "a value for db_user", "read user name from config file")?; 
+    let db_user = check_critical_db_par (toml_database.db_user , 
+        "Unable to read the user name from the config file.", "has a value for db_user")?; 
 
-    let db_password = check_critical_db_par (toml_database.db_password , "a value for db_password", "read user password from config file")?; 
+    let db_password = check_critical_db_par (toml_database.db_password , 
+        "Unable to read the user password from the config file.", "has a value for db_password")?; 
 
     let db_host = check_db_par (toml_database.db_host, "DB host", "localhost");
             
@@ -261,8 +222,7 @@ fn verify_db_parameters(toml_database: TomlDBPars) -> Result<DBPars, AppError> {
 }
 
 
-
-fn check_critical_db_par (src_name: Option<String>, sec2: &str, error_suffix: &str) -> Result<String, AppError> {
+fn check_critical_db_par (src_name: Option<String>, problem: &str, action: &str) -> Result<String, AppError> {
  
     let s = match src_name {
         Some(s) => s,
@@ -271,14 +231,10 @@ fn check_critical_db_par (src_name: Option<String>, sec2: &str, error_suffix: &s
 
     if s == "none".to_string() || s.trim() == "".to_string()
     {
-        let print_msg = r#"CRITICAL ERROR - Unable to "#.to_string() + error_suffix + r#" - 
-        program cannot continue. Please check config file ('config_imp_ror.toml') 
-        has "# + sec2;
-        println!("{}", print_msg);
-    
-        let err_msg = format!("CRITICAL ERROR - Unable to {}", error_suffix);
-        let cf_err = CustomError::new(&err_msg);
-        Err(AppError::CsErr(cf_err))
+        let err_msg = problem.to_string() + r#" 
+        The program cannot continue. 
+        Please check the config file ('app_config.toml') "# + action;
+        Err(AppError::CriticalConfigError(err_msg))
     }
     else {
         Ok(s)
@@ -310,9 +266,8 @@ pub fn fetch_db_name() -> Result<String, AppError> {
     let db_pars = match DB_PARS.get() {
          Some(dbp) => dbp,
          None => {
-            let msg = "Unable to obtain DB name when retrieving database name";
-            let cf_err = CustomError::new(msg);
-            return Result::Err(AppError::CsErr(cf_err));
+            let problem = "Unable to obtain DB name.".to_string();
+            return Result::Err(AppError::MissingDatabaseParameter(problem));
         },
     };
     Ok(db_pars.db_name.clone())
@@ -323,18 +278,14 @@ pub fn fetch_db_conn_string(db_name: String) -> Result<String, AppError> {
     let db_pars = match DB_PARS.get() {
          Some(dbp) => dbp,
          None => {
-            let msg = "Unable to obtain DB parameters when building connection string";
-            let cf_err = CustomError::new(msg);
-            return Result::Err(AppError::CsErr(cf_err));
+            let problem = "Unable to obtain DB parameters when building connection string.".to_string();
+            return Result::Err(AppError::MissingDatabaseParameter(problem));
         },
     };
     
     Ok(format!("postgres://{}:{}@{}:{}/{}", 
     db_pars.db_user, db_pars.db_password, db_pars.db_host, db_pars.db_port, db_name))
 }
-
-
-
 
 
 #[cfg(test)]
@@ -564,7 +515,6 @@ db_name="geo"
         assert_eq!(res.db_pars.db_port, 5432);
         assert_eq!(res.db_pars.db_name, "geo");
     }
-
 
 }
   

@@ -21,8 +21,7 @@ mod cli_reader;
 * is correct as well as some tests on the regex expression used on the source file.
 ***********************************************************************************/
 
-use crate::error_defs::{AppError, CustomError};
-//use crate::error_defs::AppError;
+use crate::AppError;
 use chrono::NaiveDate;
 use sqlx::postgres::{PgPoolOptions, PgConnectOptions, PgPool};
 use log::error;
@@ -79,10 +78,7 @@ pub async fn get_params(args: Vec<OsString>, config_string: String) -> Result<In
         }
 
         if !data_folder_good && flags.import_data { 
-
-            let msg = "Required data folder does not exists or is not accessible";
-            let cf_err = CustomError::new(msg);
-            return Result::Err(AppError::CsErr(cf_err));
+            return Result::Err(AppError::MissingFolder("data_folder".to_string()));
         }
 
         let mut log_folder = file_pars.log_folder_path;
@@ -111,10 +107,8 @@ pub async fn get_params(args: Vec<OsString>, config_string: String) -> Result<In
             Err(_) => "".to_string(),
         };
 
-        if data_date == "" && flags.import_data {   // Raise an AppError...required data is missing.
-            let msg = "Data date not provided";
-            let cf_err = CustomError::new(msg);
-            return Result::Err(AppError::CsErr(cf_err));
+        if data_date == "" && flags.import_data {   
+            return Result::Err(AppError::MissingParameter("Data date".to_string()));
         }
 
         // For execution flags read from the environment variables
@@ -168,7 +162,7 @@ pub async fn get_db_pool() -> Result<PgPool, AppError> {
         Err(e) => {
             error!("An error occured while creating the DB pool: {}", e);
             error!("Check the DB credentials and confirm the database is available");
-            return Err(AppError::SqErr(e))
+            return Err(AppError::SqlxError(e))
         },
     }
 }
