@@ -24,7 +24,6 @@ mod cli_reader;
 use crate::AppError;
 use chrono::NaiveDate;
 use sqlx::postgres::{PgPoolOptions, PgConnectOptions, PgPool};
-use log::error;
 use std::path::PathBuf;
 use std::ffi::OsString;
 use std::fs;
@@ -78,7 +77,7 @@ pub async fn get_params(args: Vec<OsString>, config_string: String) -> Result<In
         }
 
         if !data_folder_good && flags.import_data { 
-            return Result::Err(AppError::MissingFolder("data_folder".to_string()));
+            return Result::Err(AppError::MissingProgramParameter("data_folder".to_string()));
         }
 
         let mut log_folder = file_pars.log_folder_path;
@@ -108,7 +107,7 @@ pub async fn get_params(args: Vec<OsString>, config_string: String) -> Result<In
         };
 
         if data_date == "" && flags.import_data {   
-            return Result::Err(AppError::MissingParameter("Data date".to_string()));
+            return Result::Err(AppError::MissingProgramParameter("Data date".to_string()));
         }
 
         // For execution flags read from the environment variables
@@ -150,21 +149,15 @@ pub async fn get_db_pool() -> Result<PgPool, AppError> {
         Err(e) => return Err(e),
     };
 
-    let db_conn_string = config_reader::fetch_db_conn_string(db_name)?;  
+    let db_conn_string = config_reader::fetch_db_conn_string(&db_name)?;  
    
     let mut opts: PgConnectOptions = db_conn_string.parse()?;
     opts = opts.log_slow_statements(log::LevelFilter::Warn, Duration::from_secs(3));
 
-    match PgPoolOptions::new()
-    .max_connections(5) 
-    .connect_with(opts).await {
-        Ok(p) => Ok(p),
-        Err(e) => {
-            error!("An error occured while creating the DB pool: {}", e);
-            error!("Check the DB credentials and confirm the database is available");
-            return Err(AppError::SqlxError(e))
-        },
-    }
+    PgPoolOptions::new()
+        .max_connections(5) 
+        .connect_with(opts).await
+        .map_err( |e| AppError::DBPoolError(e, db_name))
 }
 
 

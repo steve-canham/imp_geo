@@ -67,11 +67,8 @@ pub struct DBPars {
 pub fn populate_config_vars(config_string: &String) -> Result<Config, AppError> {
 
     let toml_config = toml::from_str::<TomlConfig>(&config_string)
-        .map_err(|_| {
-            let problem = r#"Unable to open config file. Please check config file ('app_config.toml') has the correct name, form and is in the correct location ."#.to_string(); 
-            AppError::CriticalConfigError(problem)
-        }
-    )?;
+        .map_err(|_| {AppError::ConfigurationError("Unable to parse config file.".to_string(),
+                                       "File (app_config.toml) may be malformed.".to_string())})?;
 
     let toml_data_details = match toml_config.data {
         Some(d) => d,
@@ -85,18 +82,14 @@ pub fn populate_config_vars(config_string: &String) -> Result<Config, AppError> 
 
     let toml_database = match toml_config.database {
         Some(d) => d,
-        None => {
-            let problem = "Unable to read any DB parameters. Please check the config file has a set of appropriate values listed under '[database]'".to_string(); 
-            return Result::Err(AppError::CriticalConfigError(problem))  
-        },
+        None => {return Result::Err(AppError::ConfigurationError("Missing or misspelt configuration section.".to_string(),
+            "Cannot find a section called '[database]'.".to_string()))},
     };
 
     let toml_files = match toml_config.files {
         Some(f) => f,
-        None => {
-            let problem = r#"Unable to read any file parameters. Please check the config file has a set of appropriate values listed under '[files]'"#.to_string();  
-            return Result::Err(AppError::CriticalConfigError(problem))  
-        },
+        None => {return Result::Err(AppError::ConfigurationError("Missing or misspelt configuration section.".to_string(),
+           "Cannot find a section called '[files]'.".to_string()))},
     };
    
     let config_files = verify_file_parameters(toml_files)?;
@@ -131,76 +124,35 @@ fn verify_file_parameters(toml_files: TomlFilePars) -> Result<FilePars, AppError
     // Check data folder first as there are no default for this.
     // It must therefore be present.
 
-    let data_folder_path = check_critical_pathbuf (toml_files.data_folder_path, 
-                            "Unable to read the data folder path in config file.", "has a value for the data_folder_path",
-               )?;
+    let data_folder_string = check_essential_string (toml_files.data_folder_path, "data path folder", "data_folder_path")?;
 
-    let log_folder_path = check_pathbuf (toml_files.log_folder_path, "log folder", "the data_folder", &data_folder_path);
+    let log_folder_string = check_defaulted_string (toml_files.log_folder_path, "log folder", "data_folder_path", &data_folder_string);
 
-    let output_folder_path = check_pathbuf (toml_files.output_folder_path, "outputs folder", "the data_folder", &data_folder_path);
+    let output_folder_string = check_defaulted_string (toml_files.output_folder_path, "outputs folder", "data_folder_path", &data_folder_string);
 
     Ok(FilePars {
-        data_folder_path,
-        log_folder_path,
-        output_folder_path,
+        data_folder_path: PathBuf::from(data_folder_string),
+        log_folder_path: PathBuf::from(log_folder_string),
+        output_folder_path: PathBuf::from(output_folder_string),
     })
-}
-
-
-fn check_critical_pathbuf (src_name: Option<String>, problem: &str, action: &str) -> Result<PathBuf, AppError> {
- 
-    let s = match src_name {
-        Some(s) => s,
-        None => "none".to_string(),
-    };
-
-    if s == "none".to_string() || s.trim() == "".to_string()
-    {
-        let err_msg = problem.to_string() + " Please check the config file ('app_config.toml') " + action;
-        Err(AppError::CriticalConfigError(err_msg))
-    }
-    else {
-        Ok(PathBuf::from(s))
-    }
-}
-
-
-fn check_pathbuf (src_name: Option<String>, folder_type: &str, alt_path_name: &str, alt_path: &PathBuf) -> PathBuf {
- 
-    let s = match src_name {
-        Some(s) => s,
-        None => "none".to_string(),
-    };
-
-    if s == "none".to_string() || s.trim() == "".to_string()
-    {
-        println!("No value found for {} path in config file - 
-        using the default value ({}) instead.", folder_type, alt_path_name);
-        alt_path.to_owned()
-    }
-    else {
-        PathBuf::from(s)
-    }
 }
 
 
 fn verify_db_parameters(toml_database: TomlDBPars) -> Result<DBPars, AppError> {
 
- // Check user name and password first as there are no defaults for these values.
+    // Check user name and password first as there are no defaults for these values.
     // They must therefore be present.
 
-    let db_user = check_critical_db_par (toml_database.db_user , 
-        "Unable to read the user name from the config file.", "has a value for db_user")?; 
+    let db_user = check_essential_string (toml_database.db_user, "database user name", "db_user")?; 
 
-    let db_password = check_critical_db_par (toml_database.db_password , 
-        "Unable to read the user password from the config file.", "has a value for db_password")?; 
-
-    let db_host = check_db_par (toml_database.db_host, "DB host", "localhost");
+    let db_password = check_essential_string (toml_database.db_password, "database user password", "db_password")?;
+       
+    let db_host = check_defaulted_string (toml_database.db_host, "DB host", "localhost", "localhost");
             
-    let db_port_as_string = check_db_par (toml_database.db_port, "DB port", "5432");
+    let db_port_as_string = check_defaulted_string (toml_database.db_port, "DB port", "5432", "5432");
     let db_port: usize = db_port_as_string.parse().unwrap_or_else(|_| 5432);
 
-    let db_name = check_db_par (toml_database.db_name, "DB name", "geo");
+    let db_name = check_defaulted_string (toml_database.db_name, "DB name", "geo", "geo");
 
     Ok(DBPars {
         db_host,
@@ -212,7 +164,7 @@ fn verify_db_parameters(toml_database: TomlDBPars) -> Result<DBPars, AppError> {
 }
 
 
-fn check_critical_db_par (src_name: Option<String>, problem: &str, action: &str) -> Result<String, AppError> {
+fn check_essential_string (src_name: Option<String>, value_name: &str, config_name: &str) -> Result<String, AppError> {
  
     let s = match src_name {
         Some(s) => s,
@@ -221,8 +173,8 @@ fn check_critical_db_par (src_name: Option<String>, problem: &str, action: &str)
 
     if s == "none".to_string() || s.trim() == "".to_string()
     {
-        let err_msg = problem.to_string() + " Please check the config file ('app_config.toml') " + action;
-        Err(AppError::CriticalConfigError(err_msg))
+        return Result::Err(AppError::ConfigurationError("Essential configuration value missing or misspelt.".to_string(),
+        format!("Cannot find a value for {} ({}).", value_name, config_name)))
     }
     else {
         Ok(s)
@@ -230,7 +182,7 @@ fn check_critical_db_par (src_name: Option<String>, problem: &str, action: &str)
 }
 
 
-fn check_db_par (src_name: Option<String>, param_type: &str, default:  &str) -> String {
+fn check_defaulted_string (src_name: Option<String>, value_name: &str, default_name: &str, default:  &str) -> String {
  
     let s = match src_name {
         Some(s) => s,
@@ -240,7 +192,7 @@ fn check_db_par (src_name: Option<String>, param_type: &str, default:  &str) -> 
     if s == "none".to_string() || s.trim() == "".to_string()
     {
         println!("No value found for {} path in config file - 
-        using the provided default value ('{}') instead.", param_type, default);
+        using the provided default value ('{}') instead.", value_name, default_name);
         default.to_owned()
     }
     else {
@@ -253,23 +205,20 @@ pub fn fetch_db_name() -> Result<String, AppError> {
     let db_pars = match DB_PARS.get() {
          Some(dbp) => dbp,
          None => {
-            let problem = "Unable to obtain DB name.".to_string();
-            return Result::Err(AppError::MissingDatabaseParameter(problem));
+            return Result::Err(AppError::MissingDBParameters());
         },
     };
     Ok(db_pars.db_name.clone())
 }
 
 
-pub fn fetch_db_conn_string(db_name: String) -> Result<String, AppError> {
+pub fn fetch_db_conn_string(db_name: &String) -> Result<String, AppError> {
     let db_pars = match DB_PARS.get() {
          Some(dbp) => dbp,
          None => {
-            let problem = "Unable to obtain DB parameters when building connection string.".to_string();
-            return Result::Err(AppError::MissingDatabaseParameter(problem));
+            return Result::Err(AppError::MissingDBParameters());
         },
     };
-    
     Ok(format!("postgres://{}:{}@{}:{}/{}", 
     db_pars.db_user, db_pars.db_password, db_pars.db_host, db_pars.db_port, db_name))
 }
