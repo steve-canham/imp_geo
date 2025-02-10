@@ -68,9 +68,7 @@ pub fn populate_config_vars(config_string: &String) -> Result<Config, AppError> 
 
     let toml_config = toml::from_str::<TomlConfig>(&config_string)
         .map_err(|_| {
-            let problem = r#"Unable to open config file - the program cannot continue. 
-            Please check config file ('app_config.toml') has the 
-            correct name, form and is in the correct location ."#.to_string(); 
+            let problem = r#"Unable to open config file. Please check config file ('app_config.toml') has the correct name, form and is in the correct location ."#.to_string(); 
             AppError::CriticalConfigError(problem)
         }
     )?;
@@ -88,9 +86,7 @@ pub fn populate_config_vars(config_string: &String) -> Result<Config, AppError> 
     let toml_database = match toml_config.database {
         Some(d) => d,
         None => {
-            let problem = r#"Unable to read any DB parameters - the program cannot continue. 
-            Please check the config file has a set of appropriate values listed
-            under '[database]'"#.to_string(); 
+            let problem = "Unable to read any DB parameters. Please check the config file has a set of appropriate values listed under '[database]'".to_string(); 
             return Result::Err(AppError::CriticalConfigError(problem))  
         },
     };
@@ -98,9 +94,7 @@ pub fn populate_config_vars(config_string: &String) -> Result<Config, AppError> 
     let toml_files = match toml_config.files {
         Some(f) => f,
         None => {
-            let problem = r#"Unable to read any file parameters - the program cannot continue. 
-            Please check the config file has a set of appropriate values listed
-            under '[files]'"#.to_string();  
+            let problem = r#"Unable to read any file parameters. Please check the config file has a set of appropriate values listed under '[files]'"#.to_string();  
             return Result::Err(AppError::CriticalConfigError(problem))  
         },
     };
@@ -138,13 +132,12 @@ fn verify_file_parameters(toml_files: TomlFilePars) -> Result<FilePars, AppError
     // It must therefore be present.
 
     let data_folder_path = check_critical_pathbuf (toml_files.data_folder_path, 
-                            "Unable to read the data folder path in config file.",
-                            "has a value for the data_folder_path",
+                            "Unable to read the data folder path in config file.", "has a value for the data_folder_path",
                )?;
 
-    let log_folder_path = check_pathbuf (toml_files.log_folder_path, "log folder", &data_folder_path);
+    let log_folder_path = check_pathbuf (toml_files.log_folder_path, "log folder", "the data_folder", &data_folder_path);
 
-    let output_folder_path = check_pathbuf (toml_files.output_folder_path, "outputs folder", &data_folder_path);
+    let output_folder_path = check_pathbuf (toml_files.output_folder_path, "outputs folder", "the data_folder", &data_folder_path);
 
     Ok(FilePars {
         data_folder_path,
@@ -163,9 +156,7 @@ fn check_critical_pathbuf (src_name: Option<String>, problem: &str, action: &str
 
     if s == "none".to_string() || s.trim() == "".to_string()
     {
-        let err_msg = problem.to_string() + r#"
-        The program cannot continue. 
-        Please check the config file ('app_config.toml') "# + action;
+        let err_msg = problem.to_string() + " Please check the config file ('app_config.toml') " + action;
         Err(AppError::CriticalConfigError(err_msg))
     }
     else {
@@ -174,7 +165,7 @@ fn check_critical_pathbuf (src_name: Option<String>, problem: &str, action: &str
 }
 
 
-fn check_pathbuf (src_name: Option<String>, folder_type: &str, alt_path: &PathBuf) -> PathBuf {
+fn check_pathbuf (src_name: Option<String>, folder_type: &str, alt_path_name: &str, alt_path: &PathBuf) -> PathBuf {
  
     let s = match src_name {
         Some(s) => s,
@@ -183,9 +174,8 @@ fn check_pathbuf (src_name: Option<String>, folder_type: &str, alt_path: &PathBu
 
     if s == "none".to_string() || s.trim() == "".to_string()
     {
-        let print_msg = r#"No value found for "#.to_string() + folder_type + r#" path in config file - 
-            using the provided data folder instead."#;
-        println!("{}", print_msg);
+        println!("No value found for {} path in config file - 
+        using the default value ({}) instead.", folder_type, alt_path_name);
         alt_path.to_owned()
     }
     else {
@@ -231,9 +221,7 @@ fn check_critical_db_par (src_name: Option<String>, problem: &str, action: &str)
 
     if s == "none".to_string() || s.trim() == "".to_string()
     {
-        let err_msg = problem.to_string() + r#" 
-        The program cannot continue. 
-        Please check the config file ('app_config.toml') "# + action;
+        let err_msg = problem.to_string() + " Please check the config file ('app_config.toml') " + action;
         Err(AppError::CriticalConfigError(err_msg))
     }
     else {
@@ -242,7 +230,7 @@ fn check_critical_db_par (src_name: Option<String>, problem: &str, action: &str)
 }
 
 
-fn check_db_par (src_name: Option<String>, folder_type: &str, default:  &str) -> String {
+fn check_db_par (src_name: Option<String>, param_type: &str, default:  &str) -> String {
  
     let s = match src_name {
         Some(s) => s,
@@ -251,9 +239,8 @@ fn check_db_par (src_name: Option<String>, folder_type: &str, default:  &str) ->
 
     if s == "none".to_string() || s.trim() == "".to_string()
     {
-        let print_msg = r#"No value found for "#.to_string() + folder_type + r#" path in config file - 
-            using the provided default value instead."#;
-        println!("{}", print_msg);
+        println!("No value found for {} path in config file - 
+        using the provided default value ('{}') instead.", param_type, default);
         default.to_owned()
     }
     else {
