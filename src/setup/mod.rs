@@ -1,25 +1,20 @@
 /**********************************************************************************
-* The setup module. Referenced in main by 'mod setup'.
-* The two public modules allow integration tests to call into them, to give those
-* tests the same DB conection pool and logging capability as the main library.
-* The log established by log_helper seems to be available throughout the program
-* via a suitable 'use' statement.
+The setup module, and the get_params function in this file in particular, 
+orchestrates the collection and fusion of parameters as provided in 
+1) a config toml file, and 
+2) command line arguments. 
+Where a parameter may be given in either the config file or command line, the 
+command line version always over-writes anything from the file.
+The module also checks the parameters for completeness (those required will vary, 
+depending on the activity specified). If possible, defaults are used to stand in for 
+mising parameters. If not possible the program stops with a message explaining the 
+problem.
+The module also provides a database connection pool on demand.
 ***********************************************************************************/
 
 pub mod config_reader;
 pub mod log_helper;
 mod cli_reader;
-
-/**********************************************************************************
-* This over-arching 'mod' setup module 
-* a) establishes the final collection of parameters, taking into account both 
-* environmental and CLI values. 
-* b) Unpacks the file name to obtain data version and date, if possible, 
-* c) Obtains a database connection pool 
-* d) Orchestrates the creation of the lookup and summary schemas.
-* It has a collection of unit tests ensuring that the parameter generatiuon process 
-* is correct as well as some tests on the regex expression used on the source file.
-***********************************************************************************/
 
 use crate::AppError;
 use chrono::NaiveDate;
@@ -40,7 +35,8 @@ pub struct InitParams {
     pub flags: Flags,
 }
 
-pub async fn get_params(args: Vec<OsString>, config_string: String) -> Result<InitParams, AppError> {
+
+pub fn get_params(args: Vec<OsString>, config_string: String) -> Result<InitParams, AppError> {
 
     // Called from main as the initial task of the program.
     // Returns a struct that contains the program's parameters.
@@ -133,7 +129,6 @@ fn folder_exists(folder_name: &PathBuf) -> bool {
     };
     res
 }
-        
 
 
 pub async fn get_db_pool() -> Result<PgPool, AppError> {  
@@ -151,288 +146,175 @@ pub async fn get_db_pool() -> Result<PgPool, AppError> {
 
     let db_conn_string = config_reader::fetch_db_conn_string(&db_name)?;  
    
-    let mut opts: PgConnectOptions = db_conn_string.parse()?;
+    let mut opts: PgConnectOptions = db_conn_string.parse()
+                    .map_err(|e| AppError::DBPoolError("Problem with parsing conection string".to_string(), e))?;
     opts = opts.log_slow_statements(log::LevelFilter::Warn, Duration::from_secs(3));
 
     PgPoolOptions::new()
         .max_connections(5) 
         .connect_with(opts).await
-        .map_err( |e| AppError::DBPoolError(e, db_name))
+        .map_err(|e| AppError::DBPoolError(format!("Problem with connecting to database {} and obtaining Pool", db_name), e))
 }
 
 
 
 
-/* 
 // Tests
 #[cfg(test)]
 
 mod tests {
     use super::*;
           
-    // Ensure the parameters are being correctly extracted from the CLI arguments
-    // The testing functions need to be async because of the call to get_params.
-    // the test therefore uses the async version of the temp_env::with_vars function.
-    // This function needs to be awaited to execute.
-    // The closure is replaced by an explicitly async block rather than
-    // a normal closure. Inserting '||' before or after the 'async' results
-    // in multiple complaints from the compiler. The async block can also
-    // be replaced by a separate async function and called explicitly.
- 
-  
-    #[tokio::test]
-    async fn check_env_vars_overwrite_blank_cli_values() {
+    // Ensure the parameters are being correctly combined.
+   
+    #[test]
+    fn check_config_vars_read_correctly() {
 
-        // Note that in most cases the folder path given must exist, and be 
-        // accessible, or get_params will panic and an error will be thrown. 
+        let config = r#"
+[data]
+data_date="2024-12-11"
 
-        
-            ("data_folder_path", Some("E:/ROR/data")),
-            ("src_file_name", Some("v1.58 20241211.json")),
-            ("output_file_name", Some("results 25.json")),
-            ("data_version", Some("v1.60")),
-            ("data_date", Some("2025-12-11")),
+[files]
+data_folder_path="E:\\MDR source data\\Geonames\\data"
+log_folder_path="E:\\MDR source data\\Geonames\\logs"
+output_folder_path="E:\\MDR source data\\Geonames\\outputs"
 
-        async { 
-            let args : Vec<&str> = vec!["target/debug/ror1.exe"];
-            let test_args = args.iter().map(|x| x.to_string().into()).collect::<Vec<OsString>>();
-            let res = get_params(test_args).await.unwrap();
-    
-            assert_eq!(res.flags.import_ror, true);
-            assert_eq!(res.flags.process_data, false);
-            assert_eq!(res.flags.export_text, false);
-            assert_eq!(res.flags.create_lookups, false);
-            assert_eq!(res.flags.create_summary, false);
-            assert_eq!(res.data_folder, PathBuf::from("E:/ROR/data"));
-            assert_eq!(res.log_folder, PathBuf::from("E:/ROR/logs"));
-            assert_eq!(res.output_folder, PathBuf::from("E:/ROR/outputs"));
-            assert_eq!(res.source_file_name, "v1.58 20241211.json");
-            let lt = Local::now().format("%m-%d %H%M%S").to_string();
-            assert_eq!(res.output_file_name, format!("results 25.json at {}.txt", lt));
-            assert_eq!(res.data_version, "v1.58");
-            assert_eq!(res.data_date, "2024-12-11");
-        }
-       ).await;
+[database]
+db_host="localhost"
+db_user="postgres"
+db_password="WinterIsComing!"
+db_port="5433"
+db_name="geo"
+"#;
 
-    }
+        let config_string = config.to_string();
+        config_reader::populate_config_vars(&config_string).unwrap();
 
-
-    #[tokio::test]
-    async fn check_cli_vars_overwrite_env_values() {
-
-        // Note that the folder path given must exist, 
-        // and be accessible, or get_params will panic
-        // and an error will be thrown. 
-
-        temp_env::async_with_vars(
-        [
-            ("data_folder_path", Some("E:/ROR/20241211 1.58 data")),
-            ("src_file_name", Some("v1.58 20241211.json")),
-            ("data_version", Some("v1.59")),
-            ("data_date", Some("2025-12-11")),
-            ("output_file_name", Some("results 27.json")),
-        ],
-        async { 
-            let args : Vec<&str> = vec!["target/debug/ror1.exe", "-r", "-p", "-t", "-x",
-                                     "-f", "E:/ROR/data", "-d", "2026-12-25", "-s", "schema2 data.json", "-v", "v1.60"];
-            let test_args = args.iter().map(|x| x.to_string().into()).collect::<Vec<OsString>>();
-            let res = get_params(test_args).await.unwrap();
-    
-            assert_eq!(res.flags.import_ror, true);
-            assert_eq!(res.flags.process_data, true);
-            assert_eq!(res.flags.export_text, true);
-            assert_eq!(res.flags.export_csv, true);
-            assert_eq!(res.flags.create_lookups, false);
-            assert_eq!(res.flags.create_summary, false);
-            assert_eq!(res.data_folder, PathBuf::from("E:/ROR/data"));
-            assert_eq!(res.log_folder, PathBuf::from("E:/ROR/logs"));
-            assert_eq!(res.output_folder, PathBuf::from("E:/ROR/outputs"));
-            assert_eq!(res.source_file_name, "schema2 data.json");
-            let lt = Local::now().format("%m-%d %H%M%S").to_string();
-            assert_eq!(res.output_file_name, format!("results 27.json at {}.txt", lt));
-            assert_eq!(res.data_version, "v1.60");
-            assert_eq!(res.data_date, "2026-12-25");
-        }
-       ).await;
-
-    }
-
-
-    #[tokio::test]
-    async fn check_cli_vars_with_i_flag() {
-
-        // Note that the folder path given must exist, 
-        // and be accessible, or get_params will panic
-        // and an error will be thrown. 
-
-        temp_env::async_with_vars(
-        [
-            ("data_folder_path", Some("E:/ROR/20241211 1.58 data")),
-            ("src_file_name", Some("v1.58 20241211.json")),
-            ("data_date", Some("2025-12-11")),
-            ("output_file_name", Some("results 27.json")),
-        ],
-        async { 
-            let args : Vec<&str> = vec!["target/debug/ror1.exe", "-r", "-p", "-i", 
-                                        "-f", "E:/ROR/data", "-d", "2026-12-25", "-s", "schema2 data.json"];
-            let test_args = args.iter().map(|x| x.to_string().into()).collect::<Vec<OsString>>();
-            let res = get_params(test_args).await.unwrap();
-    
-            assert_eq!(res.flags.import_ror, false);
-            assert_eq!(res.flags.process_data, false);
-            assert_eq!(res.flags.export_text, false);
-            assert_eq!(res.flags.create_lookups,true);
-            assert_eq!(res.flags.create_summary, true);
-            assert_eq!(res.data_folder, PathBuf::new());
-            assert_eq!(res.log_folder, PathBuf::new());
-            assert_eq!(res.output_folder, PathBuf::new());
-            assert_eq!(res.source_file_name, "".to_string());
-            assert_eq!(res.output_file_name, "".to_string());
-            assert_eq!(res.data_version, "".to_string());
-            assert_eq!(res.data_date, "".to_string());
-        }
-       ).await;
-
-    }
-
-
-    #[tokio::test]
-    async fn check_cli_vars_with_a_flag_and_new_win_folders() {
-
-        // Note that the folder path given must exist, 
-        // and be accessible, or get_params will panic
-        // and an error will be thrown. 
-
-        temp_env::async_with_vars(
-        [
-            ("data_folder_path", Some("E:\\ROR\\20241211 1.58 data")),
-            ("log_folder_path", Some("E:\\ROR\\some logs")),
-            ("output_folder_path", Some("E:\\ROR\\dummy\\some outputs")),
-            ("src_file_name", Some("v1.58 20241211.json")),
-            ("data_date", Some("2025-12-11")),
-            ("output_file_name", Some("results 28.json")),
-        ],
-        async { 
-            let args : Vec<&str> = vec!["target/debug/ror1.exe", "-a", "-f", "E:\\ROR\\data", 
-                                       "-d", "2026-12-25", "-s", "schema2 data.json", "-v", "v1.60"];
-            let test_args = args.iter().map(|x| x.to_string().into()).collect::<Vec<OsString>>();
-            let res = get_params(test_args).await.unwrap();
-    
-            assert_eq!(res.flags.import_ror, true);
-            assert_eq!(res.flags.process_data, true);
-            assert_eq!(res.flags.export_text, true);
-            assert_eq!(res.flags.create_lookups, false);
-            assert_eq!(res.flags.create_summary, false);
-            assert_eq!(res.data_folder, PathBuf::from("E:/ROR/data"));
-            assert_eq!(res.log_folder, PathBuf::from("E:/ROR/some logs"));
-            assert_eq!(res.output_folder, PathBuf::from("E:/ROR/dummy/some outputs"));
-            assert_eq!(res.source_file_name, "schema2 data.json");
-            let lt = Local::now().format("%m-%d %H%M%S").to_string();
-            assert_eq!(res.output_file_name, format!("results 28.json at {}.txt", lt));
-            assert_eq!(res.data_version, "v1.60");
-            assert_eq!(res.data_date, "2026-12-25");
-        }
-      ).await;
-
-    }
-    
-    #[tokio::test]
-    async fn check_cli_vars_with_a_flag_and_new_posix_folders() {
-
-        // Note that the folder path given must exist, 
-        // and be accessible, or get_params will panic
-        // and an error will be thrown. 
-
-        temp_env::async_with_vars(
-        [
-            ("data_folder_path", Some("E:/ROR/data")),
-            ("log_folder_path", Some("E:/ROR/some logs 2")),
-            ("output_folder_path", Some("E:/ROR/dummy 2/some outputs")),
-            ("src_file_name", Some("v1.58 20241211.json")),
-            ("data_date", Some("2025-12-11")),
-            ("output_file_name", Some("results 28.json")),
-        ],
-        async { 
-            let args : Vec<&str> = vec!["target/debug/ror1.exe", "-a", "-f", "E:/ROR/data", 
-                                       "-d", "2026-12-25", "-s", "schema2 data.json", "-v", "v1.60"];
-            let test_args = args.iter().map(|x| x.to_string().into()).collect::<Vec<OsString>>();
-            let res = get_params(test_args).await.unwrap();
-    
-            assert_eq!(res.flags.import_ror, true);
-            assert_eq!(res.flags.process_data, true);
-            assert_eq!(res.flags.export_text, true);
-            assert_eq!(res.flags.create_lookups, false);
-            assert_eq!(res.flags.create_summary, false);
-            assert_eq!(res.data_folder, PathBuf::from("E:/ROR/data"));
-            assert_eq!(res.log_folder, PathBuf::from("E:/ROR/some logs 2"));
-            assert_eq!(res.output_folder, PathBuf::from("E:/ROR/dummy 2/some outputs"));
-            assert_eq!(res.source_file_name, "schema2 data.json");
-            let lt = Local::now().format("%m-%d %H%M%S").to_string();
-            assert_eq!(res.output_file_name, format!("results 28.json at {}.txt", lt));
-            assert_eq!(res.data_version, "v1.60");
-            assert_eq!(res.data_date, "2026-12-25");
-        }
-      ).await;
-
-    }
-
-
-    #[tokio::test]
-    #[should_panic]
-    async fn check_wrong_data_folder_panics_if_r() {
-    
-    temp_env::async_with_vars(
-    [
-        ("data_folder_path", Some("E:/ROR/20240607 1.47 data")),
-        ("log_folder_path", Some("E:/ROR/some logs")),
-        ("output_folder_path", Some("E:/ROR/dummy/some outputs")),
-        ("src_file_name", Some("v1.58 20241211.json")),
-        ("data_date", Some("2025-12-11")),
-        ("output_file_name", Some("results 28.json")),
-    ],
-    async { 
-        let args : Vec<&str> = vec!["target/debug/ror1.exe", "-a", "-f", "E:/silly folder name", 
-                                    "-d", "2026-12-25", "-s", "schema2 data.json", "-v", "v1.60"];
+        let args : Vec<&str> = vec!["dummy target"];
         let test_args = args.iter().map(|x| x.to_string().into()).collect::<Vec<OsString>>();
-        let _res = get_params(test_args).await.unwrap();
-        }
-      ).await;
-    }
-
-    #[tokio::test]
-    async fn check_wrong_data_folder_does_not_panic_if_not_r() {
+            
+        let res = get_params(test_args, config_string).unwrap();
     
-        temp_env::async_with_vars(
-        [
-            ("data_folder_path", Some("E:/ROR/daft data")),
-            ("log_folder_path", Some("E:/ROR/some logs")),
-            ("output_folder_path", Some("E:/ROR/dummy/some outputs")),
-            ("src_file_name", Some("v1.58 20241211.json")),
-            ("data_date", Some("2025-12-11")),
-            ("output_file_name", Some("results 28.json")),
-        ],
-        async { 
-            let args : Vec<&str> = vec!["target/debug/ror1.exe", "-p", "-f", "E:/ROR/silly folder name", 
-                                        "-d", "2026-12-25", "-s", "schema2 data.json", "-v", "v1.60"];
-            let test_args = args.iter().map(|x| x.to_string().into()).collect::<Vec<OsString>>();
-            let res = get_params(test_args).await.unwrap();
-            assert_eq!(res.flags.import_ror, false);
-            assert_eq!(res.flags.process_data, true);
-            assert_eq!(res.flags.export_text, false);
-            assert_eq!(res.flags.create_lookups, false);
-            assert_eq!(res.flags.create_summary, false);
-            assert_eq!(res.data_folder, PathBuf::from("E:/ROR/silly folder name"));
-            assert_eq!(res.log_folder, PathBuf::from("E:/ROR/some logs"));
-            assert_eq!(res.output_folder, PathBuf::from("E:/ROR/dummy/some outputs"));
-            assert_eq!(res.source_file_name, "schema2 data.json");
-            let lt = Local::now().format("%m-%d %H%M%S").to_string();
-            assert_eq!(res.output_file_name, format!("results 28.json at {}.txt", lt));
-            assert_eq!(res.data_version, "v1.60");
-            assert_eq!(res.data_date, "2026-12-25");
+        assert_eq!(res.flags.import_data, true);
+        assert_eq!(res.flags.export_data, false);
+        assert_eq!(res.flags.create_config, false);
+        assert_eq!(res.flags.initialise, false);
+        assert_eq!(res.flags.test_run, false);
+        assert_eq!(res.data_folder, PathBuf::from("E:\\MDR source data\\Geonames\\data"));
+        assert_eq!(res.log_folder, PathBuf::from("E:\\MDR source data\\Geonames\\logs"));
+        assert_eq!(res.output_folder, PathBuf::from("E:\\MDR source data\\Geonames\\outputs"));
+        assert_eq!(res.data_date, "2024-12-11");
+    }
+    
 
-            }
-        ).await;
+    #[test]
+    fn check_with_i_flag() {
+
+        let config = r#"
+[data]
+data_date=""
+
+[files]
+data_folder_path="E:\\MDR source data\\Geonames\\data"
+log_folder_path="E:\\MDR source data\\Geonames\\logs"
+output_folder_path="E:\\MDR source data\\Geonames\\outputs"
+
+[database]
+db_host="localhost"
+db_user="postgres"
+db_password="WinterIsComing!"
+db_port="5433"
+db_name="geo"
+"#;
+        let config_string = config.to_string();
+        config_reader::populate_config_vars(&config_string).unwrap();
+    
+        let args : Vec<&str> = vec!["dummy target", "-i", "-x"];
+        let test_args = args.iter().map(|x| x.to_string().into()).collect::<Vec<OsString>>();
+        
+        let res = get_params(test_args, config_string).unwrap();
+
+        assert_eq!(res.flags.export_data, false);
+        assert_eq!(res.flags.export_data, false);
+        assert_eq!(res.flags.create_config, true);
+        assert_eq!(res.flags.initialise, true);
+        assert_eq!(res.flags.test_run, false);
+        assert_eq!(res.data_folder, PathBuf::new());
+        assert_eq!(res.log_folder, PathBuf::new());
+        assert_eq!(res.output_folder, PathBuf::new());
+        assert_eq!(res.data_date, "");
     }
 
+
+    #[test]
+    fn check_cli_vars_with_z_flag() {
+
+        let config = r#"
+[data]
+data_date="2024-12-11"
+
+[files]
+data_folder_path="E:\\MDR source data\\Geonames\\data"
+log_folder_path="E:\\MDR source data\\Geonames\\logs"
+output_folder_path="E:\\MDR source data\\Geonames\\outputs"
+
+[database]
+db_host="localhost"
+db_user="postgres"
+db_password="WinterIsComing!"
+db_port="5433"
+db_name="geo"
+"#;
+        
+        let config_string = config.to_string();
+        config_reader::populate_config_vars(&config_string).unwrap();
+    
+        let args : Vec<&str> = vec!["dummy target", "-z"];
+        let test_args = args.iter().map(|x| x.to_string().into()).collect::<Vec<OsString>>();
+            
+        let res = get_params(test_args, config_string).unwrap();
+    
+        assert_eq!(res.flags.import_data, true);
+        assert_eq!(res.flags.export_data, false);
+        assert_eq!(res.flags.create_config, false);
+        assert_eq!(res.flags.initialise, false);
+        assert_eq!(res.flags.test_run, true);
+        assert_eq!(res.data_folder, PathBuf::from("E:\\MDR source data\\Geonames\\data"));
+        assert_eq!(res.log_folder, PathBuf::from("E:\\MDR source data\\Geonames\\logs"));
+        assert_eq!(res.output_folder, PathBuf::from("E:\\MDR source data\\Geonames\\outputs"));
+        assert_eq!(res.data_date, "2024-12-11");
+    }
+
+
+    #[test]
+    #[should_panic]
+    fn check_wrong_data_folder_panics() {
+    
+        let config = r#"
+[data]
+data_date="2024-12-11"
+
+[files]
+data_folder_path="C:\\MDR source data\\Geonames\\data"
+log_folder_path="E:\\MDR source data\\Geonames\\logs"
+output_folder_path="E:\\MDR source data\\Geonames\\outputs"
+
+[database]
+db_host="localhost"
+db_user="postgres"
+db_password="WinterIsComing!"
+db_port="5433"
+db_name="geo"
+"#;
+        
+        let config_string = config.to_string();
+        config_reader::populate_config_vars(&config_string).unwrap();
+        
+        let args : Vec<&str> = vec!["dummy target", "-r"];
+        let test_args = args.iter().map(|x| x.to_string().into()).collect::<Vec<OsString>>();
+        
+        let _res = get_params(test_args, config_string).unwrap();
+    }
+    
 }
-*/
+

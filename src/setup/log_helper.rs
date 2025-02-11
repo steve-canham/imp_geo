@@ -1,8 +1,6 @@
 /***************************************************************************
  * Establishes the log for the programme's operation using log and log4rs, 
  * and includes various helper functions.
- * Once established the log file appears to be accessible to any log
- * statement within the rest of the program (after 'use log:: ...').
  ***************************************************************************/
 
 use chrono::Local;

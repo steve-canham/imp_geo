@@ -1,11 +1,14 @@
 pub mod setup;
 pub mod err;
 
+use std::sync::OnceLock;
 use err::AppError;
 use setup::log_helper;
 use std::ffi::OsString;
 use std::path::PathBuf;
 use std::fs;
+
+pub static LOG_RUNNING: OnceLock<bool> = OnceLock::new();
 
 pub async fn run(args: Vec<OsString>) -> Result<(), AppError> {
     
@@ -22,12 +25,13 @@ pub async fn run(args: Vec<OsString>) -> Result<(), AppError> {
     let config_string: String = fs::read_to_string(&config_file)
                                 .map_err(|e| AppError::IoReadErrorWithPath(e, config_file))?;
                               
-    let params = setup::get_params(args, config_string).await?;
+    let params = setup::get_params(args, config_string)?;
     let flags = params.flags;
     let test_run = flags.test_run;
 
     if !test_run {
        log_helper::setup_log(&params.log_folder)?;
+       LOG_RUNNING.set(true).unwrap();   // no other thread - therefore should always work
        log_helper::log_startup_params(&params);
     }
             

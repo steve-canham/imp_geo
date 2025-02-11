@@ -12,5 +12,4 @@ async fn main() {
       Ok(_) => println!("Done!"),
       Err(e) => err::report_error(e),
     };
-    
 }

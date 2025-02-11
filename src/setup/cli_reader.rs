@@ -21,7 +21,7 @@ pub fn fetch_valid_arguments(args: Vec<OsString>) -> Result<Flags, AppError>
 
     // Flag values are false if not present, true if present.
 
-    let r_flag = parse_result.get_flag("r_flag");
+    let mut r_flag = parse_result.get_flag("r_flag");
     let mut x_flag = parse_result.get_flag("x_flag");
 
     let i_flag = parse_result.get_flag("i_flag");
@@ -51,7 +51,11 @@ pub fn fetch_valid_arguments(args: Vec<OsString>) -> Result<Flags, AppError>
     else {
 
         if r_flag && x_flag {
-            x_flag = false;
+            x_flag = false;  // import is the default
+        }
+
+        if !r_flag && !x_flag {
+            r_flag = true;  // import is the default
         }
 
         Ok(Flags {
@@ -90,7 +94,7 @@ fn parse_args(args: Vec<OsString>) -> Result<ArgMatches, AppError> {
            .short('i')
            .long("install")
            .required(false)
-           .help("A flag signifying initial run, creates summary and context tables only")
+           .help("A flag signifying initial run, builds config and creates context tables")
            .action(clap::ArgAction::SetTrue)
        )
        .arg(
@@ -106,7 +110,7 @@ fn parse_args(args: Vec<OsString>) -> Result<ArgMatches, AppError> {
             .short('j')
             .long("config")
             .required(false)
-            .help("A flag signifying that the conig file should be edited")
+            .help("A flag signifying that the config file should be edited")
             .action(clap::ArgAction::SetTrue)
        )
        .arg(
@@ -135,7 +139,7 @@ mod tests {
         let args : Vec<&str> = vec![target];
         let test_args = args.iter().map(|x| x.to_string().into()).collect::<Vec<OsString>>();
         let res = fetch_valid_arguments(test_args).unwrap();
-        assert_eq!(res.import_data, false);
+        assert_eq!(res.import_data, true);
         assert_eq!(res.export_data, false);
         assert_eq!(res.initialise, false);
         assert_eq!(res.create_config, false);
@@ -174,9 +178,9 @@ mod tests {
 
 
     #[test]
-    fn check_cli_with_r_and_z_flag() {
+    fn check_cli_with_r_x_and_z_flag() {
         let target = "dummy target";
-        let args : Vec<&str> = vec![target, "-r", "-z"];
+        let args : Vec<&str> = vec![target, "-r", "-x", "-z"];
         let test_args = args.iter().map(|x| x.to_string().into()).collect::<Vec<OsString>>();
 
         let res = fetch_valid_arguments(test_args).unwrap();
@@ -229,6 +233,21 @@ mod tests {
         assert_eq!(res.initialise, true);
         assert_eq!(res.create_config, false);
         assert_eq!(res.test_run, false);
+    }
+
+
+    #[test]
+    fn check_cli_with_z_flag() {
+        let target = "dummy target";
+        let args : Vec<&str> = vec![target, "-z"];
+        let test_args = args.iter().map(|x| x.to_string().into()).collect::<Vec<OsString>>();
+
+        let res = fetch_valid_arguments(test_args).unwrap();
+        assert_eq!(res.import_data, true);
+        assert_eq!(res.export_data, false);
+        assert_eq!(res.initialise, false);
+        assert_eq!(res.create_config, false);
+        assert_eq!(res.test_run, true);
     }
 
 
