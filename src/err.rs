@@ -1,4 +1,4 @@
-use crate::LOG_RUNNING;
+use crate::setup::log_set_up;
 use thiserror::Error;
 use log::error;
 
@@ -35,10 +35,13 @@ pub enum AppError {
     DBPoolError(String, #[source] sqlx::Error,),
 
     #[error("Error when processing sql: {0:?}")]
-    SqlxError(#[from] sqlx::Error),
+    SqlxError(#[source] sqlx::Error, String),
 
     #[error("Error during IO operation: {0:?}")]
     IoError(#[from] std::io::Error),
+
+    #[error("Error during CSV read operation: {0:?}")]
+    CsvError(#[from] csv::Error),
 }
 
 
@@ -71,12 +74,14 @@ pub fn report_error(e: AppError) -> () {
         
         AppError::DBPoolError(d, e) => print_error(d, e.to_string(), "DB POOL ERROR"),
   
-        AppError::SqlxError(e) => print_simple_error (e.to_string(), "SQLX ERROR"),
+        AppError::SqlxError(e, s) => print_error (e.to_string(), 
+                        format!("SQL was: {}", s),  "SQLX ERROR"),
   
         AppError::IoError(e) => print_simple_error (e.to_string(), "IO ERROR"),
+
+        AppError::CsvError(e) => print_simple_error (e.to_string(), "CSV ERROR"),
     }
 }
-
 
 fn print_error(description: String, details: String, header: &str) {
     let star_num = 100;
@@ -109,14 +114,8 @@ fn output_error (err_output: String) {
 
     eprint!("{}", err_output);
 
-    if LOG_RUNNING.get().is_some(){
+    if log_set_up(){
         error!("{}", err_output);
     }
-
-    // Not intended to run unattended (at the moment)
-    // system independent error logging therefore not yet required.
-
 }
-
-
 
