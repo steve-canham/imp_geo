@@ -4,7 +4,7 @@ use std::path::PathBuf;
 use std::io::BufReader;
 use std::fs::File;
 use csv::ReaderBuilder;
-use crate::data_vectors::AltRecVecs;
+use super::data_vectors::AltRecVecs;
 use log::info;
 
 
@@ -32,10 +32,11 @@ pub struct AltRec {
 }
 
 
-pub async fn import_data(data_folder: &PathBuf, source_file_name: &String, pool: &Pool<Postgres>, latin_only: bool) -> Result<(), AppError> {
+pub async fn import_alt_name_data(data_folder: &PathBuf, source_file_name: &str, pool: &Pool<Postgres>, latin_only: bool) -> Result<(), AppError> {
 
     let source_file_path: PathBuf = [data_folder, &PathBuf::from(source_file_name)].iter().collect();
-    let file = File::open(source_file_path)?;
+    let file = File::open(&source_file_path)
+               .map_err(|e| AppError::IoWriteErrorWithPath(e, source_file_path))?;
     let buf_reader = BufReader::new(file);
     let mut csv_rdr = ReaderBuilder::new()
         .has_headers(false)
@@ -131,9 +132,9 @@ pub async fn import_data(data_folder: &PathBuf, source_file_name: &String, pool:
         
         i +=1;
 
-        //if i > 3000 {
-        //    break;
-        // }
+        if i > 3000 {
+            break;
+         }
 
         if i % 250000 == 0 {
             info!("Processed {} alternate name records", i);
@@ -142,6 +143,7 @@ pub async fn import_data(data_folder: &PathBuf, source_file_name: &String, pool:
 
     dv.store_data(&pool).await?;
     transfer_data(&pool).await?;
+    info!("Processed {} alternate name records in total", i);
             
     Ok(())
 }

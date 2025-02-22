@@ -10,16 +10,15 @@
  
  #[derive(Debug, Deserialize)]
  pub struct TomlConfig {
-     pub files: Option<TomlFilePars>, 
+     pub folders: Option<TomlFolderPars>, 
      pub database: Option<TomlDBPars>,
  }
  
  #[derive(Debug, Deserialize)]
- pub struct TomlFilePars {
+ pub struct TomlFolderPars {
      pub data_folder_path: Option<String>,
      pub log_folder_path: Option<String>,
      pub output_folder_path: Option<String>,
-     pub src_file_name: Option<String>,
  }
  
  #[derive(Debug, Deserialize)]
@@ -32,15 +31,14 @@
  }
  
  pub struct Config {
-     pub files: FilePars, 
+     pub folders: FolderPars, 
      pub db_pars: DBPars,
  }
  
- pub struct FilePars {
+ pub struct FolderPars {
      pub data_folder_path: PathBuf,
      pub log_folder_path: PathBuf,
      pub output_folder_path: PathBuf,
-     pub src_file_name: String,
  }
  
  #[derive(Debug, Clone)]
@@ -66,42 +64,39 @@
              "Cannot find a section called '[database]'.".to_string()))},
      };
  
-     let toml_files = match toml_config.files {
+     let toml_folders = match toml_config.folders {
          Some(f) => f,
          None => {return Result::Err(AppError::ConfigurationError("Missing or misspelt configuration section.".to_string(),
             "Cannot find a section called '[files]'.".to_string()))},
      };
     
-     let config_files = verify_file_parameters(toml_files)?;
+     let config_folders = verify_folder_parameters(toml_folders)?;
      let config_db_pars = verify_db_parameters(toml_database)?;
  
      let _ = DB_PARS.set(config_db_pars.clone());
  
      Ok(Config{
-         files: config_files,
+         folders: config_folders,
          db_pars: config_db_pars,
      })
  }
  
  
- fn verify_file_parameters(toml_files: TomlFilePars) -> Result<FilePars, AppError> {
+ fn verify_folder_parameters(toml_folders: TomlFolderPars) -> Result<FolderPars, AppError> {
  
      // Check data folder and source file first as there are no defaults for these values.
      // They must therefore be present.
  
-     let data_folder_string = check_essential_string (toml_files.data_folder_path, "data path folder", "data_folder_path")?;
+     let data_folder_string = check_essential_string (toml_folders.data_folder_path, "data path folder", "data_folder_path")?;
  
-     let src_file_name = check_essential_string (toml_files.src_file_name, "source file name", "src_file_name")?;
+     let log_folder_string = check_defaulted_string (toml_folders.log_folder_path, "log folder", "data_folder_path", &data_folder_string);
  
-     let log_folder_string = check_defaulted_string (toml_files.log_folder_path, "log folder", "data_folder_path", &data_folder_string);
+     let output_folder_string = check_defaulted_string (toml_folders.output_folder_path, "outputs folder", "data_folder_path", &data_folder_string);
  
-     let output_folder_string = check_defaulted_string (toml_files.output_folder_path, "outputs folder", "data_folder_path", &data_folder_string);
- 
-     Ok(FilePars {
+     Ok(FolderPars {
          data_folder_path: PathBuf::from(data_folder_string),
          log_folder_path: PathBuf::from(log_folder_string),
          output_folder_path: PathBuf::from(output_folder_string),
-         src_file_name: src_file_name,
      })
  }
  
@@ -205,11 +200,10 @@
  
          let config = r#"
  
- [files]
+ [folders]
  data_folder_path="E:\\MDR source data\\Geonames\\data"
  log_folder_path="E:\\MDR source data\\Geonames\\logs"
  output_folder_path="E:\\MDR source data\\Geonames\\outputs"
- src_file_name="alternateNamesV2.txt"
  
  [database]
  db_host="localhost"
@@ -220,10 +214,9 @@
  "#;
          let config_string = config.to_string();
          let res = populate_config_vars(&config_string).unwrap();
-         assert_eq!(res.files.data_folder_path, PathBuf::from("E:\\MDR source data\\Geonames\\data"));
-         assert_eq!(res.files.log_folder_path, PathBuf::from("E:\\MDR source data\\Geonames\\logs"));
-         assert_eq!(res.files.output_folder_path, PathBuf::from("E:\\MDR source data\\Geonames\\outputs"));
-         assert_eq!(res.files.src_file_name, "alternateNamesV2.txt");
+         assert_eq!(res.folders.data_folder_path, PathBuf::from("E:\\MDR source data\\Geonames\\data"));
+         assert_eq!(res.folders.log_folder_path, PathBuf::from("E:\\MDR source data\\Geonames\\logs"));
+         assert_eq!(res.folders.output_folder_path, PathBuf::from("E:\\MDR source data\\Geonames\\outputs"));
          assert_eq!(res.db_pars.db_host, "localhost");
          assert_eq!(res.db_pars.db_user, "user_name");
          assert_eq!(res.db_pars.db_password, "password");
@@ -237,7 +230,7 @@
  
          let config = r#"
  
- [files]
+ [folders]
  data_folder_path="E:\\MDR source data\\Geonames\\data"
  src_file_name="alternateNamesV2.txt"
  
@@ -250,10 +243,9 @@
  "#;
          let config_string = config.to_string();
          let res = populate_config_vars(&config_string).unwrap();
-         assert_eq!(res.files.data_folder_path, PathBuf::from("E:\\MDR source data\\Geonames\\data"));
-         assert_eq!(res.files.log_folder_path, PathBuf::from("E:\\MDR source data\\Geonames\\data"));
-         assert_eq!(res.files.output_folder_path, PathBuf::from("E:\\MDR source data\\Geonames\\data"));
-         assert_eq!(res.files.src_file_name, "alternateNamesV2.txt");
+         assert_eq!(res.folders.data_folder_path, PathBuf::from("E:\\MDR source data\\Geonames\\data"));
+         assert_eq!(res.folders.log_folder_path, PathBuf::from("E:\\MDR source data\\Geonames\\data"));
+         assert_eq!(res.folders.output_folder_path, PathBuf::from("E:\\MDR source data\\Geonames\\data"));
      }
  
  
@@ -261,11 +253,10 @@
      fn check_config_with_blank_log_and_outputs_folders() {
  
          let config = r#"
- [files]
+ [folders]
  data_folder_path="E:\\MDR source data\\Geonames\\data"
  log_folder_path=""
  output_folder_path=""
- src_file_name="alternateNamesV2.txt"
  
  [database]
  db_host="localhost"
@@ -276,10 +267,9 @@
  "#;
          let config_string = config.to_string();
          let res = populate_config_vars(&config_string).unwrap();
-         assert_eq!(res.files.data_folder_path, PathBuf::from("E:\\MDR source data\\Geonames\\data"));
-         assert_eq!(res.files.log_folder_path, PathBuf::from("E:\\MDR source data\\Geonames\\data"));
-         assert_eq!(res.files.output_folder_path, PathBuf::from("E:\\MDR source data\\Geonames\\data"));
-         assert_eq!(res.files.src_file_name, "alternateNamesV2.txt");
+         assert_eq!(res.folders.data_folder_path, PathBuf::from("E:\\MDR source data\\Geonames\\data"));
+         assert_eq!(res.folders.log_folder_path, PathBuf::from("E:\\MDR source data\\Geonames\\data"));
+         assert_eq!(res.folders.output_folder_path, PathBuf::from("E:\\MDR source data\\Geonames\\data"));
      }
  
  
@@ -287,11 +277,10 @@
      fn check_missing_data_details_become_empty_strings() {
  
          let config = r#"
- [files]
+ [folders]
  data_folder_path="E:\\MDR source data\\Geonames\\data"
  log_folder_path="E:\\MDR source data\\Geonames\\logs"
  output_folder_path="E:\\MDR source data\\Geonames\\outputs"
- src_file_name="alternateNamesV2.txt"
  
  [database]
  db_host="localhost"
@@ -302,10 +291,9 @@
  "#;
          let config_string = config.to_string();
          let res = populate_config_vars(&config_string).unwrap();
-         assert_eq!(res.files.data_folder_path, PathBuf::from("E:\\MDR source data\\Geonames\\data"));
-         assert_eq!(res.files.log_folder_path, PathBuf::from("E:\\MDR source data\\Geonames\\logs"));
-         assert_eq!(res.files.output_folder_path, PathBuf::from("E:\\MDR source data\\Geonames\\outputs"));
-         assert_eq!(res.files.src_file_name, "alternateNamesV2.txt");
+         assert_eq!(res.folders.data_folder_path, PathBuf::from("E:\\MDR source data\\Geonames\\data"));
+         assert_eq!(res.folders.log_folder_path, PathBuf::from("E:\\MDR source data\\Geonames\\logs"));
+         assert_eq!(res.folders.output_folder_path, PathBuf::from("E:\\MDR source data\\Geonames\\outputs"));
  
          assert_eq!(res.db_pars.db_host, "localhost");
          assert_eq!(res.db_pars.db_user, "user_name");
@@ -319,10 +307,9 @@
      #[should_panic]
      fn check_missing_data_folder_panics() {
      let config = r#"
- [files]
+ [folders]
  log_folder_path="E:\\MDR source data\\Geonames\\logs"
  output_folder_path="E:\\MDR source data\\Geonames\\outputs"
- src_file_name="v1.59-2025-01-23-ror-data_schema_v2.json"
  
  [database]
  db_host="localhost"
@@ -341,11 +328,10 @@
      fn check_missing_user_name_panics() {
  
          let config = r#"
- [files]
+ [folders]
  data_folder_path="E:\\MDR source data\\Geonames\\data"
  log_folder_path="E:\\MDR source data\\Geonames\\logs"
  output_folder_path="E:\\MDR source data\\Geonames\\outputs"
- src_file_name="alternateNamesV2.txt"
  
  [database]
  db_host="localhost"
@@ -363,11 +349,10 @@
      fn check_db_defaults_are_supplied() {
  
          let config = r#"
- [files]
+ [folders]
  data_folder_path="E:\\MDR source data\\Geonames\\data"
  log_folder_path="E:\\MDR source data\\Geonames\\logs"
  output_folder_path="E:\\MDR source data\\Geonames\\outputs"
- src_file_name="alternateNamesV2.txt"
  
  [database]
  db_user="user_name"
@@ -387,11 +372,10 @@
      fn missing_port_gets_default() {
  
          let config = r#"
- [files]
+ [folders]
  data_folder_path="E:\\MDR source data\\Geonames\\data"
  log_folder_path="E:\\MDR source data\\Geonames\\logs"
  output_folder_path="E:\\MDR source data\\Geonames\\outputs"
- src_file_name="alternateNamesV2.txt"
  
  [database]
  db_host="localhost"

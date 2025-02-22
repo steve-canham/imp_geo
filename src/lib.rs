@@ -1,10 +1,13 @@
 
 pub mod setup;
 pub mod err;
-mod initialise;
-mod import;
+mod alt_names;
+mod cities;
+mod countries;
+mod admins;
+mod scopes;
 mod export;
-mod data_vectors;
+
 
 use setup::cli_reader;
 use err::AppError;
@@ -26,24 +29,63 @@ pub async fn run(args: Vec<OsString>) -> Result<(), AppError> {
     setup::establish_log(&params)?;
     let pool = setup::get_db_pool().await?;
     let test_run = flags.test_run;
+
+    // intiialising routine stuff to go here
         
     if flags.import_data   // import ror from json file and store in ror schema tables
     {
-        initialise::create_geo_tables(&pool).await?;
+        // The latin_only parameter makes the process include Latin names only
+        // By default it is true, but is switchable to false using a command flag.
 
-        // The fourth parameter, true, makes the process include Latin names only
-        // By default it is true, but needs to be switchable to false using a command flag
         let latin_only = !flags.include_nonlatin;
-        import::import_data(&params.data_folder, &params.source_file_name, &pool, latin_only).await?;
+
+        // Do Alt Names - import first as this data is needed by later imports
+
+        alt_names::create_alt_name_table(&pool).await?;
+        let file_name = "alternateNamesV2.txt";
+        alt_names::import_data(&params.data_folder, file_name, &pool, latin_only).await?;
+
+        // Admins 1 and 2 data - also used below.
+
+        admins::create_admins_tables(&pool).await?;
+        let file_name = "admin1CodesASCII.txt";
+        admins::import_data(&params.data_folder, file_name, &pool).await?;
+        let file_name = "admin2Codes.txt";
+        admins::import_data(&params.data_folder, file_name, &pool).await?;
+
+        // Countries data
+
+        countries::create_country_tables(&pool).await?;
+        let file_name = "countryInfo.txt";
+        countries::import_data(&params.data_folder, file_name, &pool, latin_only).await?;
+
+        // Cities data
+
+        cities::create_city_tables(&pool).await?;
+        let file_name = "cities5000.txt";
+        cities::import_data(&params.data_folder, file_name, &pool, latin_only).await?;
+
+            // Do 'tidying' of odd and missing values
+
+        // Scope data
+
+        scopes::create_scope_tables(&pool).await?;
+        let file_name = "no-country.txt";
+        scopes::import_data(&params.data_folder, file_name, &pool, latin_only).await?;
+        
+
+
+
 
         if !test_run {
             //import::summarise_import(&pool).await?;
         }
     }
 
+
     if flags.export_data  // write out summary data from data in smm tables
     { 
-        export::export_data(&params.output_folder, &params.source_file_name, &pool).await?;
+        export::export_data(&params.output_folder, &pool).await?;
     }
 
 

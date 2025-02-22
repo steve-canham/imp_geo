@@ -7,7 +7,6 @@
  use std::ffi::OsString;
  
  pub struct CliPars {
-     pub source_file: String,
      pub flags: Flags, 
  }
  
@@ -22,8 +21,7 @@
  pub fn fetch_valid_arguments(args: Vec<OsString>) -> Result<CliPars, AppError>
  { 
      let parse_result = parse_args(args)?;
-     let source_file = parse_result.get_one::<String>("src_file").unwrap();
-   
+  
      // Flag values are false if not present, true if present.
  
      let mut r_flag = parse_result.get_flag("r_flag");
@@ -47,7 +45,6 @@
      };
  
      Ok(CliPars {
-         source_file: source_file.clone(),
          flags: flags,
      })
  
@@ -58,14 +55,6 @@
  
      command!()
          .about("Imports data from txt file and imports it into a database")
-         .arg(
-              Arg::new("src_file")
-             .short('s')
-             .long("source")
-             .visible_aliases(["source file"])
-             .help("A string with the source file name (over-rides environment setting")
-             .default_value("")
-         )
          .arg(
              Arg::new("r_flag")
             .short('r')
@@ -115,7 +104,6 @@
          let args : Vec<&str> = vec![target];
          let test_args = args.iter().map(|x| x.to_string().into()).collect::<Vec<OsString>>();
          let res = fetch_valid_arguments(test_args).unwrap();
-         assert_eq!(res.source_file, "".to_string());
          assert_eq!(res.flags.import_data, true);
          assert_eq!(res.flags.export_data, false);
          assert_eq!(res.flags.test_run, false);
@@ -128,7 +116,6 @@
          let test_args = args.iter().map(|x| x.to_string().into()).collect::<Vec<OsString>>();
  
          let res = fetch_valid_arguments(test_args).unwrap();
-         assert_eq!(res.source_file, "".to_string());
          assert_eq!(res.flags.import_data, false);
          assert_eq!(res.flags.export_data, true);
          assert_eq!(res.flags.test_run, false);
@@ -141,7 +128,6 @@
          let test_args = args.iter().map(|x| x.to_string().into()).collect::<Vec<OsString>>();
  
          let res = fetch_valid_arguments(test_args).unwrap();
-         assert_eq!(res.source_file, "".to_string());
          assert_eq!(res.flags.import_data, true);
          assert_eq!(res.flags.include_nonlatin, false);
          assert_eq!(res.flags.export_data, false);
@@ -155,7 +141,6 @@
          let test_args = args.iter().map(|x| x.to_string().into()).collect::<Vec<OsString>>();
  
          let res = fetch_valid_arguments(test_args).unwrap();
-         assert_eq!(res.source_file, "".to_string());
          assert_eq!(res.flags.import_data, true);
          assert_eq!(res.flags.include_nonlatin, true);
          assert_eq!(res.flags.export_data, false);
@@ -169,38 +154,22 @@
          let test_args = args.iter().map(|x| x.to_string().into()).collect::<Vec<OsString>>();
  
          let res = fetch_valid_arguments(test_args).unwrap();
-         assert_eq!(res.source_file, "".to_string());
          assert_eq!(res.flags.import_data, true);
          assert_eq!(res.flags.include_nonlatin, false);
          assert_eq!(res.flags.export_data, false);
          assert_eq!(res.flags.test_run, true);
      }
- 
-     
-     #[test]
-     fn check_cli_with_explicit_string_pars() {
-         let target = "dummy target";
-         let args : Vec<&str> = vec![target, "-s", "schema2 data.json"];
-         let test_args = args.iter().map(|x| x.to_string().into()).collect::<Vec<OsString>>();
- 
-         let res = fetch_valid_arguments(test_args).unwrap();
-         assert_eq!(res.source_file, "schema2 data.json");
-         assert_eq!(res.flags.import_data, true);
-         assert_eq!(res.flags.include_nonlatin, false);
-         assert_eq!(res.flags.export_data, false);
-         assert_eq!(res.flags.test_run, false);
-     }
- 
+      
+    
      #[test]
      fn check_cli_with_most_params_explicit() {
          let target = "dummy target";
-         let args : Vec<&str> = vec![target, "-s", "schema2.1 data.json", "-r", "-x", "-z"];
+         let args : Vec<&str> = vec![target, "-r", "-x", "-n", "-z"];
          let test_args = args.iter().map(|x| x.to_string().into()).collect::<Vec<OsString>>();
  
          let res = fetch_valid_arguments(test_args).unwrap();
-         assert_eq!(res.source_file, "schema2.1 data.json");
          assert_eq!(res.flags.import_data, true);
-         assert_eq!(res.flags.include_nonlatin, false);
+         assert_eq!(res.flags.include_nonlatin, true);
          assert_eq!(res.flags.export_data, false);
          assert_eq!(res.flags.test_run, true);
      }

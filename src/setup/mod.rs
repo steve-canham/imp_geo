@@ -35,7 +35,6 @@ pub struct InitParams {
     pub data_folder: PathBuf,
     pub log_folder: PathBuf,
     pub output_folder: PathBuf,
-    pub source_file_name: String,
     pub flags: Flags,
 }
 
@@ -50,12 +49,12 @@ pub fn get_params(cli_pars: CliPars, config_string: &String) -> Result<InitParam
     // If folder name also given in CL args the CL version takes precedence
     
     let config_file: Config = config_reader::populate_config_vars(&config_string)?; 
-    let file_pars = config_file.files;  // guaranteed to exist
+    let folder_pars = config_file.folders;  // guaranteed to exist
 
     let empty_pb = PathBuf::from("");
     let mut data_folder_good = true;
 
-    let data_folder =  file_pars.data_folder_path;
+    let data_folder =  folder_pars.data_folder_path;
     if !folder_exists (&data_folder) 
     {   
         data_folder_good = false;
@@ -65,7 +64,7 @@ pub fn get_params(cli_pars: CliPars, config_string: &String) -> Result<InitParam
         return Result::Err(AppError::MissingProgramParameter("data_folder".to_string()));
     }
 
-    let mut log_folder = file_pars.log_folder_path;
+    let mut log_folder = folder_pars.log_folder_path;
     if log_folder == empty_pb && data_folder_good {
         log_folder = data_folder.clone();
     }
@@ -75,7 +74,7 @@ pub fn get_params(cli_pars: CliPars, config_string: &String) -> Result<InitParam
         }
     }
 
-    let mut output_folder = file_pars.output_folder_path;
+    let mut output_folder = folder_pars.output_folder_path;
     if output_folder == empty_pb && data_folder_good {
         output_folder = data_folder.clone();
     }
@@ -85,23 +84,13 @@ pub fn get_params(cli_pars: CliPars, config_string: &String) -> Result<InitParam
         }
     }
 
-    // If source file name given in CL args the CL version takes precedence.
-
-    let mut source_file_name = cli_pars.source_file;
-    if source_file_name == "".to_string(){
-        source_file_name =  file_pars.src_file_name;
-        if source_file_name == "".to_string() && cli_pars.flags.import_data {   // Required data is missing - Raise error and exit program.
-            return Result::Err(AppError::MissingProgramParameter("src_file_name".to_string()));
-        }
-    }
-
+    
     // For execution flags read from the environment variables
     
     Ok(InitParams {
         data_folder,
         log_folder,
         output_folder,
-        source_file_name,
         flags: cli_pars.flags,
     })
 
@@ -175,11 +164,10 @@ mod tests {
     fn check_config_vars_read_correctly() {
 
         let config = r#"
-[files]
+[folders]
 data_folder_path="E:\\MDR source data\\Geonames\\data"
 log_folder_path="E:\\MDR source data\\Geonames\\logs"
 output_folder_path="E:\\MDR source data\\Geonames\\outputs"
-src_file_name="alternateNamesV2.txt"
 
 [database]
 db_host="localhost"
@@ -202,54 +190,19 @@ db_port="5433"
         assert_eq!(res.data_folder, PathBuf::from("E:\\MDR source data\\Geonames\\data"));
         assert_eq!(res.log_folder, PathBuf::from("E:\\MDR source data\\Geonames\\logs"));
         assert_eq!(res.output_folder, PathBuf::from("E:\\MDR source data\\Geonames\\outputs"));
-        assert_eq!(res.source_file_name, "alternateNamesV2.txt");
 
     }
-
-    #[test]
-    fn check_cli_vars_overwrite_env_values() {
-
-       let config = r#"
-[files]
-data_folder_path="E:\\MDR source data\\Geonames\\data"
-log_folder_path="E:\\MDR source data\\Geonames\\logs"
-output_folder_path="E:\\MDR source data\\Geonames\\outputs"
-src_file_name="alternateNamesV2.txt"
-
-[database]
-db_host="localhost"
-db_user="postgres"
-db_password="WinterIsComing!"
-db_port="5433"
-"#;
-        let config_string = config.to_string();
-        config_reader::populate_config_vars(&config_string).unwrap();
-
-        let args : Vec<&str> = vec!["dummy target",  "-s", "schema2 data.txt"];
-        let test_args = args.iter().map(|x| x.to_string().into()).collect::<Vec<OsString>>();
-        let cli_pars = cli_reader::fetch_valid_arguments(test_args).unwrap();
-
-        let res = get_params(cli_pars, &config_string).unwrap();
-
-        assert_eq!(res.flags.import_data, true);
-        assert_eq!(res.flags.export_data, false);
-        assert_eq!(res.flags.test_run, false);
-        assert_eq!(res.data_folder, PathBuf::from("E:\\MDR source data\\Geonames\\data"));
-        assert_eq!(res.log_folder, PathBuf::from("E:\\MDR source data\\Geonames\\logs"));
-        assert_eq!(res.output_folder, PathBuf::from("E:\\MDR source data\\Geonames\\outputs"));
-        assert_eq!(res.source_file_name, "schema2 data.txt");
-    }
+   
     
     #[test]
     #[should_panic]
     fn check_wrong_data_folder_panics() {
 
         let config = r#"
-[files]
+[folders]
 data_folder_path="C:\\MDR source data\\Geonames\\data"
 log_folder_path="E:\\MDR source data\\Geonames\\logs"
 output_folder_path="E:\\MDR source data\\Geonames\\outputs"
-src_file_name="alternateNamesV2.txt"
 
 [database]
 db_host="localhost"

@@ -1,4 +1,4 @@
-use crate::import::AltRec;
+use super::import::AltRec;
 use crate::AppError;
 use sqlx::{postgres::PgQueryResult, Pool, Postgres};
 
