@@ -1,6 +1,7 @@
 
 pub mod setup;
 pub mod err;
+mod lang_codes;
 mod alt_names;
 mod cities;
 mod countries;
@@ -39,6 +40,13 @@ pub async fn run(args: Vec<OsString>) -> Result<(), AppError> {
 
         let latin_only = !flags.include_nonlatin;
 
+        // Do language codes
+
+        lang_codes::create_lang_code_tables(&pool).await?;
+        let file_name = "iso-languagecodes.txt";
+        lang_codes::import_data(&params.data_folder, file_name, &pool).await?;
+        lang_codes::transfer_data(&pool).await?;
+
         // Do Alt Names - import first as this data is needed by later imports
 
         alt_names::create_alt_name_table(&pool).await?;
@@ -57,13 +65,13 @@ pub async fn run(args: Vec<OsString>) -> Result<(), AppError> {
 
         countries::create_country_tables(&pool).await?;
         let file_name = "countryInfo.txt";
-        countries::import_data(&params.data_folder, file_name, &pool, latin_only).await?;
+        countries::import_data(&params.data_folder, file_name, &pool).await?;
 
         // Cities data
 
         cities::create_city_tables(&pool).await?;
         let file_name = "cities5000.txt";
-        cities::import_data(&params.data_folder, file_name, &pool, latin_only).await?;
+        cities::import_data(&params.data_folder, file_name, &pool).await?;
 
             // Do 'tidying' of odd and missing values
 

@@ -58,7 +58,7 @@ pub async fn import_alt_name_data(data_folder: &PathBuf, source_file_name: &str,
    let abbr = "abbr".to_string();
    let end_of_latin = "ZZ".to_string();
 
-   let vector_size = 2500;
+   let vector_size = 5000;
    let mut dv: AltRecVecs = AltRecVecs::new(vector_size);
    create_collecting_table(&pool).await?;
 
@@ -121,7 +121,7 @@ pub async fn import_alt_name_data(data_folder: &PathBuf, source_file_name: &str,
            
             let alt_name = AltRec {
                 geo_id: source.geoname_id,
-                name: source.alternate_name,
+                name: source.alternate_name.trim().replace(".", "").replace("'", "’"),
                 lang: lang_code.clone(),
                 historic: is_historic,
             };
@@ -132,7 +132,7 @@ pub async fn import_alt_name_data(data_folder: &PathBuf, source_file_name: &str,
         
         i +=1;
 
-        if i > 3000 {
+        if i > 50000 {
             break;
          }
 
@@ -169,8 +169,10 @@ async fn transfer_data(pool: &Pool<Postgres>) -> Result<PgQueryResult, AppError>
 
     let sql = r#"insert into geo.alt_names (id, alt_name, langs, historic)
         select geo_id, alt_name,
-	    string_agg(lang, ','), historic
-        from geo.alt_src_names
+	    string_agg(c.name, ', '), historic
+        from geo.alt_src_names n
+        left join geo.lang_codes c
+        on n.lang = c.code
         group by geo_id, alt_name, historic
         order by geo_id, alt_name"#;
 

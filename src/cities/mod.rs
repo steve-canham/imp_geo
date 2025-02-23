@@ -38,8 +38,8 @@ pub async fn create_city_tables(pool: &Pool<Postgres>) -> Result<(), AppError> {
 }
 
 
-pub async fn import_data(data_folder: &PathBuf, source_file_name: &str, pool: &Pool<Postgres>, latin_only: bool) -> Result<(), AppError> {
+pub async fn import_data(data_folder: &PathBuf, source_file_name: &str, pool: &Pool<Postgres>) -> Result<(), AppError> {
 
-    import::import_cities_data(data_folder, source_file_name, pool, latin_only).await
+    import::import_cities_data(data_folder, source_file_name, pool).await
 
 }

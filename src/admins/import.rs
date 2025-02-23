@@ -36,7 +36,7 @@ pub async fn import_admins_data(data_folder: &PathBuf, source_file_name: &str, p
         .from_reader(buf_reader);
 
         let mut i = 0;
-        let vector_size = 2500;
+        let vector_size = 5000;
         let mut dv: AdminVecs = AdminVecs::new(vector_size);
              
         for result in csv_rdr.deserialize() {
@@ -46,7 +46,7 @@ pub async fn import_admins_data(data_folder: &PathBuf, source_file_name: &str, p
             let admin_rec = AdminRec {
                 id: source.geonameid,
                 code: source.code,
-                name: source.name,
+                name: source.name.trim().replace(".", "").replace("'", "’"),
             };
 
             dv.add_data(&admin_rec);   // transfer data to vectors
