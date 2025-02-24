@@ -14,7 +14,6 @@
  pub struct Flags {
      pub import_data: bool,
      pub include_nonlatin: bool,
-     pub export_data: bool,
      pub test_run: bool,
  }
  
@@ -26,21 +25,16 @@
  
      let mut r_flag = parse_result.get_flag("r_flag");
      let n_flag = parse_result.get_flag("n_flag");
-     let mut x_flag = parse_result.get_flag("x_flag");
      let z_flag = parse_result.get_flag("z_flag");
-      
-     if r_flag && x_flag {  
-         x_flag = false;  // import is the default
-     }
- 
-     if !r_flag && !x_flag {
+     
+
+     if !r_flag {
          r_flag = true;  // import is the default
      }
  
      let flags = Flags {
          import_data: r_flag,
          include_nonlatin: n_flag,
-         export_data: x_flag,
          test_run: z_flag,
      };
  
@@ -72,14 +66,6 @@
             .action(clap::ArgAction::SetTrue)
          )
         .arg(
-              Arg::new("x_flag")
-             .short('x')
-             .long("filesout")
-             .required(false)
-             .help("A flag signifying output a summary of the current geonames data into a csv file")
-             .action(clap::ArgAction::SetTrue)
-         )
-        .arg(
              Arg::new("z_flag")
              .short('z')
              .long("test")
@@ -105,32 +91,18 @@
          let test_args = args.iter().map(|x| x.to_string().into()).collect::<Vec<OsString>>();
          let res = fetch_valid_arguments(test_args).unwrap();
          assert_eq!(res.flags.import_data, true);
-         assert_eq!(res.flags.export_data, false);
-         assert_eq!(res.flags.test_run, false);
-     }
-   
-     #[test]
-     fn check_cli_with_x_flag() {
-         let target = "dummy target";
-         let args : Vec<&str> = vec![target, "-x"];
-         let test_args = args.iter().map(|x| x.to_string().into()).collect::<Vec<OsString>>();
- 
-         let res = fetch_valid_arguments(test_args).unwrap();
-         assert_eq!(res.flags.import_data, false);
-         assert_eq!(res.flags.export_data, true);
          assert_eq!(res.flags.test_run, false);
      }
  
      #[test]
-     fn check_cli_with_r_and_x_flag() {
+     fn check_cli_with_r_flag() {
          let target = "dummy target";
-         let args : Vec<&str> = vec![target, "-r", "-x"];
+         let args : Vec<&str> = vec![target, "-r"];
          let test_args = args.iter().map(|x| x.to_string().into()).collect::<Vec<OsString>>();
  
          let res = fetch_valid_arguments(test_args).unwrap();
          assert_eq!(res.flags.import_data, true);
          assert_eq!(res.flags.include_nonlatin, false);
-         assert_eq!(res.flags.export_data, false);
          assert_eq!(res.flags.test_run, false);
      }
  
@@ -143,7 +115,6 @@
          let res = fetch_valid_arguments(test_args).unwrap();
          assert_eq!(res.flags.import_data, true);
          assert_eq!(res.flags.include_nonlatin, true);
-         assert_eq!(res.flags.export_data, false);
          assert_eq!(res.flags.test_run, false);
      }
  
@@ -156,7 +127,6 @@
          let res = fetch_valid_arguments(test_args).unwrap();
          assert_eq!(res.flags.import_data, true);
          assert_eq!(res.flags.include_nonlatin, false);
-         assert_eq!(res.flags.export_data, false);
          assert_eq!(res.flags.test_run, true);
      }
       
@@ -164,13 +134,12 @@
      #[test]
      fn check_cli_with_most_params_explicit() {
          let target = "dummy target";
-         let args : Vec<&str> = vec![target, "-r", "-x", "-n", "-z"];
+         let args : Vec<&str> = vec![target, "-r", "-n", "-z"];
          let test_args = args.iter().map(|x| x.to_string().into()).collect::<Vec<OsString>>();
  
          let res = fetch_valid_arguments(test_args).unwrap();
          assert_eq!(res.flags.import_data, true);
          assert_eq!(res.flags.include_nonlatin, true);
-         assert_eq!(res.flags.export_data, false);
          assert_eq!(res.flags.test_run, true);
      }
  

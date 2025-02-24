@@ -18,7 +18,6 @@
  pub struct TomlFolderPars {
      pub data_folder_path: Option<String>,
      pub log_folder_path: Option<String>,
-     pub output_folder_path: Option<String>,
  }
  
  #[derive(Debug, Deserialize)]
@@ -38,7 +37,6 @@
  pub struct FolderPars {
      pub data_folder_path: PathBuf,
      pub log_folder_path: PathBuf,
-     pub output_folder_path: PathBuf,
  }
  
  #[derive(Debug, Clone)]
@@ -90,13 +88,10 @@
      let data_folder_string = check_essential_string (toml_folders.data_folder_path, "data path folder", "data_folder_path")?;
  
      let log_folder_string = check_defaulted_string (toml_folders.log_folder_path, "log folder", "data_folder_path", &data_folder_string);
- 
-     let output_folder_string = check_defaulted_string (toml_folders.output_folder_path, "outputs folder", "data_folder_path", &data_folder_string);
- 
+  
      Ok(FolderPars {
          data_folder_path: PathBuf::from(data_folder_string),
          log_folder_path: PathBuf::from(log_folder_string),
-         output_folder_path: PathBuf::from(output_folder_string),
      })
  }
  
@@ -203,7 +198,6 @@
  [folders]
  data_folder_path="E:\\MDR source data\\Geonames\\data"
  log_folder_path="E:\\MDR source data\\Geonames\\logs"
- output_folder_path="E:\\MDR source data\\Geonames\\outputs"
  
  [database]
  db_host="localhost"
@@ -216,7 +210,6 @@
          let res = populate_config_vars(&config_string).unwrap();
          assert_eq!(res.folders.data_folder_path, PathBuf::from("E:\\MDR source data\\Geonames\\data"));
          assert_eq!(res.folders.log_folder_path, PathBuf::from("E:\\MDR source data\\Geonames\\logs"));
-         assert_eq!(res.folders.output_folder_path, PathBuf::from("E:\\MDR source data\\Geonames\\outputs"));
          assert_eq!(res.db_pars.db_host, "localhost");
          assert_eq!(res.db_pars.db_user, "user_name");
          assert_eq!(res.db_pars.db_password, "password");
@@ -245,7 +238,6 @@
          let res = populate_config_vars(&config_string).unwrap();
          assert_eq!(res.folders.data_folder_path, PathBuf::from("E:\\MDR source data\\Geonames\\data"));
          assert_eq!(res.folders.log_folder_path, PathBuf::from("E:\\MDR source data\\Geonames\\data"));
-         assert_eq!(res.folders.output_folder_path, PathBuf::from("E:\\MDR source data\\Geonames\\data"));
      }
  
  
@@ -256,7 +248,6 @@
  [folders]
  data_folder_path="E:\\MDR source data\\Geonames\\data"
  log_folder_path=""
- output_folder_path=""
  
  [database]
  db_host="localhost"
@@ -269,8 +260,7 @@
          let res = populate_config_vars(&config_string).unwrap();
          assert_eq!(res.folders.data_folder_path, PathBuf::from("E:\\MDR source data\\Geonames\\data"));
          assert_eq!(res.folders.log_folder_path, PathBuf::from("E:\\MDR source data\\Geonames\\data"));
-         assert_eq!(res.folders.output_folder_path, PathBuf::from("E:\\MDR source data\\Geonames\\data"));
-     }
+    }
  
  
      #[test]
@@ -280,7 +270,6 @@
  [folders]
  data_folder_path="E:\\MDR source data\\Geonames\\data"
  log_folder_path="E:\\MDR source data\\Geonames\\logs"
- output_folder_path="E:\\MDR source data\\Geonames\\outputs"
  
  [database]
  db_host="localhost"
@@ -293,7 +282,6 @@
          let res = populate_config_vars(&config_string).unwrap();
          assert_eq!(res.folders.data_folder_path, PathBuf::from("E:\\MDR source data\\Geonames\\data"));
          assert_eq!(res.folders.log_folder_path, PathBuf::from("E:\\MDR source data\\Geonames\\logs"));
-         assert_eq!(res.folders.output_folder_path, PathBuf::from("E:\\MDR source data\\Geonames\\outputs"));
  
          assert_eq!(res.db_pars.db_host, "localhost");
          assert_eq!(res.db_pars.db_user, "user_name");
@@ -309,7 +297,6 @@
      let config = r#"
  [folders]
  log_folder_path="E:\\MDR source data\\Geonames\\logs"
- output_folder_path="E:\\MDR source data\\Geonames\\outputs"
  
  [database]
  db_host="localhost"
@@ -331,7 +318,6 @@
  [folders]
  data_folder_path="E:\\MDR source data\\Geonames\\data"
  log_folder_path="E:\\MDR source data\\Geonames\\logs"
- output_folder_path="E:\\MDR source data\\Geonames\\outputs"
  
  [database]
  db_host="localhost"
@@ -352,7 +338,6 @@
  [folders]
  data_folder_path="E:\\MDR source data\\Geonames\\data"
  log_folder_path="E:\\MDR source data\\Geonames\\logs"
- output_folder_path="E:\\MDR source data\\Geonames\\outputs"
  
  [database]
  db_user="user_name"
@@ -375,7 +360,6 @@
  [folders]
  data_folder_path="E:\\MDR source data\\Geonames\\data"
  log_folder_path="E:\\MDR source data\\Geonames\\logs"
- output_folder_path="E:\\MDR source data\\Geonames\\outputs"
  
  [database]
  db_host="localhost"

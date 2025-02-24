@@ -84,7 +84,8 @@ pub async fn import_countries_data(data_folder: &PathBuf, source_file_name: &str
     }
             
     dv.store_data(&pool).await?;
-    info!("{} records processed from {} to geo.", i, source_file_name);
+    info!("{} records processed from {} to geo.countries", i, source_file_name);
 
     Ok(())
 }
+

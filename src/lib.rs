@@ -7,8 +7,6 @@ mod cities;
 mod countries;
 mod admins;
 mod scopes;
-mod export;
-
 
 use setup::cli_reader;
 use err::AppError;
@@ -30,24 +28,22 @@ pub async fn run(args: Vec<OsString>) -> Result<(), AppError> {
     setup::establish_log(&params)?;
     let pool = setup::get_db_pool().await?;
     let test_run = flags.test_run;
-
-    // intiialising routine stuff to go here
         
-    if flags.import_data   // import ror from json file and store in ror schema tables
+    if flags.import_data   
     {
-        // The latin_only parameter makes the process include Latin names only
-        // By default it is true, but is switchable to false using a command flag.
+        // The latin_only parameter makes the process include Latin alternative names only
+        // By default it is true, but is switchable to false using the -n command flag.
 
         let latin_only = !flags.include_nonlatin;
 
-        // Do language codes
+        // Do language codes - import first, as required by alt name processing below
 
         lang_codes::create_lang_code_tables(&pool).await?;
         let file_name = "iso-languagecodes.txt";
         lang_codes::import_data(&params.data_folder, file_name, &pool).await?;
         lang_codes::transfer_data(&pool).await?;
 
-        // Do Alt Names - import first as this data is needed by later imports
+        // Do Alt Names - import second, as this data is needed by later imports
 
         alt_names::create_alt_name_table(&pool).await?;
         let file_name = "alternateNamesV2.txt";
@@ -79,23 +75,12 @@ pub async fn run(args: Vec<OsString>) -> Result<(), AppError> {
 
         scopes::create_scope_tables(&pool).await?;
         let file_name = "no-country.txt";
-        scopes::import_data(&params.data_folder, file_name, &pool, latin_only).await?;
-        
-
-
-
-
+        scopes::import_data(&params.data_folder, file_name, &pool).await?;
+                
         if !test_run {
             //import::summarise_import(&pool).await?;
         }
     }
-
-
-    if flags.export_data  // write out summary data from data in smm tables
-    { 
-        export::export_data(&params.output_folder, &pool).await?;
-    }
-
 
      Ok(())  
 }

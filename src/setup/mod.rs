@@ -34,7 +34,6 @@ use std::sync::OnceLock;
 pub struct InitParams {
     pub data_folder: PathBuf,
     pub log_folder: PathBuf,
-    pub output_folder: PathBuf,
     pub flags: Flags,
 }
 
@@ -73,24 +72,12 @@ pub fn get_params(cli_pars: CliPars, config_string: &String) -> Result<InitParam
             fs::create_dir_all(&log_folder)?;
         }
     }
-
-    let mut output_folder = folder_pars.output_folder_path;
-    if output_folder == empty_pb && data_folder_good {
-        output_folder = data_folder.clone();
-    }
-    else {
-        if !folder_exists (&output_folder) { 
-            fs::create_dir_all(&output_folder)?;
-        }
-    }
-
-    
+   
     // For execution flags read from the environment variables
     
     Ok(InitParams {
         data_folder,
         log_folder,
-        output_folder,
         flags: cli_pars.flags,
     })
 
@@ -185,11 +172,9 @@ db_port="5433"
         let res = get_params(cli_pars, &config_string).unwrap();
 
         assert_eq!(res.flags.import_data, true);
-        assert_eq!(res.flags.export_data, false);
         assert_eq!(res.flags.test_run, false);
         assert_eq!(res.data_folder, PathBuf::from("E:\\MDR source data\\Geonames\\data"));
         assert_eq!(res.log_folder, PathBuf::from("E:\\MDR source data\\Geonames\\logs"));
-        assert_eq!(res.output_folder, PathBuf::from("E:\\MDR source data\\Geonames\\outputs"));
 
     }
    

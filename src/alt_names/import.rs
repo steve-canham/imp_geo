@@ -79,7 +79,7 @@ pub async fn import_alt_name_data(data_folder: &PathBuf, source_file_name: &str,
         }
 
         // Optional filter here to exclude non Latin names.
-
+        
         if latin_only {
             if source.alternate_name > end_of_latin {
                 create_rec = false;
@@ -132,9 +132,9 @@ pub async fn import_alt_name_data(data_folder: &PathBuf, source_file_name: &str,
         
         i +=1;
 
-        if i > 50000 {
-            break;
-         }
+        //if i > 260000 {
+        //    break;
+        // }
 
         if i % 250000 == 0 {
             info!("Processed {} alternate name records", i);
@@ -167,11 +167,13 @@ async fn create_collecting_table(pool: &Pool<Postgres>) -> Result<PgQueryResult,
 
 async fn transfer_data(pool: &Pool<Postgres>) -> Result<PgQueryResult, AppError>  {
 
+
     let sql = r#"insert into geo.alt_names (id, alt_name, langs, historic)
         select geo_id, alt_name,
 	    string_agg(c.name, ', '), historic
         from geo.alt_src_names n
-        left join geo.lang_codes c
+        left join 
+            (select * from geo.lang_codes where code_type = '639-1') c
         on n.lang = c.code
         group by geo_id, alt_name, historic
         order by geo_id, alt_name"#;
