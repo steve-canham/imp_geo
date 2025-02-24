@@ -46,7 +46,14 @@ pub async fn import_data(data_folder: &PathBuf, source_file_name: &str, pool: &P
     import::import_scope_data(data_folder, source_file_name, pool).await?;
     create_scope_data_1(pool).await?;
     create_scope_data_2(pool).await?;
-    create_scope_data_3(pool).await
+    create_scope_data_3(pool).await?;
+
+    let sql = r#"SET client_min_messages TO NOTICE;"#;   // final command to DB
+
+    sqlx::raw_sql(sql).execute(pool)
+            .await.map_err(|e| AppError::SqlxError(e, sql.to_string()))?;
+    Ok(())
+    
 }
 
 

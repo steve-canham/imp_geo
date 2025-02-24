@@ -28,7 +28,6 @@ pub struct AltRec {
     pub geo_id: i64,
     pub name: String,
     pub lang: String,
-    pub historic: String,
 }
 
 
@@ -92,7 +91,7 @@ pub async fn import_alt_name_data(data_folder: &PathBuf, source_file_name: &str,
             if geo_id != old_gid {
                 gid_num = gid_num + 1;
 
-                if gid_num == 2500 {  // every 2500 geoname ids
+                if gid_num == 5000 {  // every 5000 geoname ids
 
                     // Call the routine to transfer records to the database.
                     // Recreate the vectors, reset gid_num.
@@ -107,23 +106,11 @@ pub async fn import_alt_name_data(data_folder: &PathBuf, source_file_name: &str,
                 
                 old_gid = geo_id;
             }
-
-            let mut is_historic = "".to_string();
-            if source.is_historic.is_some() && source.is_historic.unwrap() == 1 {
-                is_historic = "Historic".to_string();
-                 if source.yfrom.is_some() {
-                    is_historic = is_historic + ", from " + &source.yfrom.unwrap();
-                 }
-                 if source.yto.is_some() {
-                    is_historic = is_historic + ", to " + &source.yto.unwrap();
-                  }
-            }
-           
+            
             let alt_name = AltRec {
                 geo_id: source.geoname_id,
                 name: source.alternate_name.trim().replace(".", "").replace("'", "’"),
                 lang: lang_code.clone(),
-                historic: is_historic,
             };
 
             // transfer data to vectors
@@ -157,7 +144,6 @@ async fn create_collecting_table(pool: &Pool<Postgres>) -> Result<PgQueryResult,
         geo_id       int
       , alt_name     varchar
       , lang         varchar
-      , historic     varchar
     );"#;
 
     sqlx::raw_sql(sql).execute(pool)
@@ -167,15 +153,14 @@ async fn create_collecting_table(pool: &Pool<Postgres>) -> Result<PgQueryResult,
 
 async fn transfer_data(pool: &Pool<Postgres>) -> Result<PgQueryResult, AppError>  {
 
-
-    let sql = r#"insert into geo.alt_names (id, alt_name, langs, historic)
+    let sql = r#"insert into geo.alt_names (id, alt_name, langs)
         select geo_id, alt_name,
-	    string_agg(c.name, ', '), historic
+	    string_agg(c.name, ', ')
         from geo.alt_src_names n
         left join 
             (select * from geo.lang_codes where code_type = '639-1') c
         on n.lang = c.code
-        group by geo_id, alt_name, historic
+        group by geo_id, alt_name
         order by geo_id, alt_name"#;
 
     sqlx::raw_sql(sql).execute(pool)

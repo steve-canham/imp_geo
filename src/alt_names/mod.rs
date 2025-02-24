@@ -13,7 +13,6 @@ pub async fn create_alt_name_table(pool: &Pool<Postgres>) -> Result<(), AppError
         id           int   
       , alt_name 	 varchar  
       , langs        varchar
-      , historic     varchar
     );
     create index alt_names_idx on geo.alt_names(id);"#;
    

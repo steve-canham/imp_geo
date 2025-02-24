@@ -7,6 +7,16 @@ use std::path::PathBuf;
 
 pub async fn create_lang_code_tables(pool: &Pool<Postgres>) -> Result<(), AppError> {
 
+    // initial call to DB, below, ensures schemas in place, reduces spurious warnings
+
+    let sql = r#"SET client_min_messages TO WARNING;  
+    create schema if not exists geo;
+    create schema if not exists loc;"#;
+
+    sqlx::raw_sql(sql).execute(pool)
+        .await.map_err(|e| AppError::SqlxError(e, sql.to_string()))?;
+
+
     let sql = r#"drop table if exists geo.lang_src_codes;
                 create table geo.lang_src_codes
                 (
@@ -39,6 +49,7 @@ pub async fn import_data(data_folder: &PathBuf, source_file_name: &str, pool: &P
     import::import_lang_code_data(data_folder, source_file_name, pool).await
 
 }
+
 
 
 pub async fn transfer_data(pool: &Pool<Postgres>) -> Result<(), AppError> {

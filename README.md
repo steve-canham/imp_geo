@@ -45,7 +45,7 @@ Note that these file names have been constant fore several years and are expecte
 
 <h3>Configuration</h3>
 The system requires a simple configuration file (app_config.toml) in the same folder as cargo.toml. This needs to have the structure shown below, 
-with the relevant values inserted between the doubvle quotes: <br/>
+with the relevant values inserted between the double quotes: <br/>
 <br/>
 [folders]<br/>
 data_folder_path=""<br/>
@@ -57,7 +57,6 @@ db_user=""<br/>
 db_password=""<br/>
 db_port=""<br/>
 db_name=""<br/>
-<br/>
 <br/>
 <h3>Usage</h3>
 There is no initialisation required - the system recreates all tables from scratch each time it is run.<br/>

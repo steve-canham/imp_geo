@@ -27,8 +27,7 @@ pub async fn run(args: Vec<OsString>) -> Result<(), AppError> {
     let params = setup::get_params(cli_pars, &config_string)?;
     setup::establish_log(&params)?;
     let pool = setup::get_db_pool().await?;
-    let test_run = flags.test_run;
-        
+         
     if flags.import_data   
     {
         // The latin_only parameter makes the process include Latin alternative names only
@@ -69,17 +68,11 @@ pub async fn run(args: Vec<OsString>) -> Result<(), AppError> {
         let file_name = "cities5000.txt";
         cities::import_data(&params.data_folder, file_name, &pool).await?;
 
-            // Do 'tidying' of odd and missing values
-
         // Scope data
 
         scopes::create_scope_tables(&pool).await?;
         let file_name = "no-country.txt";
         scopes::import_data(&params.data_folder, file_name, &pool).await?;
-                
-        if !test_run {
-            //import::summarise_import(&pool).await?;
-        }
     }
 
      Ok(())  
