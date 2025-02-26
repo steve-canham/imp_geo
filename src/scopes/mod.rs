@@ -228,7 +228,8 @@ async fn create_scope_data_3(pool: &Pool<Postgres>) -> Result<(), AppError> {
     sqlx::raw_sql(sql).execute(pool)
          .await.map_err(|e| AppError::SqlxError(e, sql.to_string()))?;
 
-    let sql = r#"drop table if exists loc.temp_scope_membership;
+    let sql = r#"SET client_min_messages TO WARNING; 
+            drop table if exists loc.temp_scope_membership;
 
             create table loc.temp_scope_membership as 
             select code as scope_code, id as scope_id, name as scope_name, UNNEST(STRING_TO_ARRAY(members, ',')) as code, 1 as member_id, '' as member_name
@@ -241,7 +242,7 @@ async fn create_scope_data_3(pool: &Pool<Postgres>) -> Result<(), AppError> {
     sqlx::raw_sql(sql).execute(pool)
          .await.map_err(|e| AppError::SqlxError(e, sql.to_string()))?;
 
-    let sql = r#"
+    let sql = r#"SET client_min_messages TO WARNING; 
         drop table if exists loc.scope_membership;
         
         create table loc.scope_membership as 

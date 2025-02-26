@@ -120,7 +120,8 @@ async fn remove_dup_cities(pool: &Pool<Postgres>) -> Result<(), AppError> {
 
     // Deals with dup cities in same disamb area and country 
 
-    let sql = r#"drop table if exists loc.temp_dup_cities;
+    let sql = r#"SET client_min_messages TO WARNING; 
+                drop table if exists loc.temp_dup_cities;
                 drop table if exists loc.temp_dup_city_matches;
                 
                 create table loc.temp_dup_cities as 
@@ -199,7 +200,8 @@ async fn add_missing_city_names(pool: &Pool<Postgres>) -> Result<(), AppError> {
     // do not have an alt_name matching the geoname city_name - this ensures that all
     // names are in the city_names table
 
-    let sql = r#"drop table if exists loc.temp_city_match;
+    let sql = r#"SET client_min_messages TO WARNING; 
+         drop table if exists loc.temp_city_match;
          
          create table loc.temp_city_match as 
          select *
@@ -235,7 +237,8 @@ async fn delete_dup_city_names(pool: &Pool<Postgres>) -> Result<(), AppError> {
 
     // Deals with dup city names in same disamb area and country 
 
-    let sql = r#"drop table if exists loc.temp_dup_city_names;
+    let sql = r#"SET client_min_messages TO WARNING; 
+            drop table if exists loc.temp_dup_city_names;
             create table loc.temp_dup_city_names
             as
             select  
@@ -258,6 +261,7 @@ async fn delete_dup_city_names(pool: &Pool<Postgres>) -> Result<(), AppError> {
             and d.alt_name = n.alt_name
             and d.alt_name <> n.city_name;
             
+            SET client_min_messages TO WARNING; 
             drop table if exists loc.temp_dup_city_names;"#;
 
     let res = sqlx::raw_sql(sql).execute(pool)

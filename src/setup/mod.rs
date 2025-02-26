@@ -1,25 +1,6 @@
-/**********************************************************************************
-* The setup module. Referenced in main by 'mod setup'.
-* The two public modules allow integration tests to call into them, to give those
-* tests the same DB conection pool and logging capability as the main library.
-* The log established by log_helper seems to be available throughout the program
-* via a suitable 'use' statement.
-***********************************************************************************/
-
 pub mod config_reader;
 pub mod log_helper;
 pub mod cli_reader;
-
-/**********************************************************************************
-* This over-arching 'mod' setup module 
-* a) establishes the final collection of parameters, taking into account both 
-* environmental and CLI values. 
-* b) Unpacks the file name to obtain data version and date, if possible, 
-* c) Obtains a database connection pool 
-* d) Orchestrates the creation of the lookup and summary schemas.
-* It has a collection of unit tests ensuring that the parameter generatiuon process 
-* is correct as well as some tests on the regex expression used on the source file.
-***********************************************************************************/
 
 use crate::err::AppError;
 use sqlx::postgres::{PgPoolOptions, PgConnectOptions, PgPool};
@@ -158,8 +139,8 @@ output_folder_path="E:\\MDR source data\\Geonames\\outputs"
 
 [database]
 db_host="localhost"
-db_user="postgres"
-db_password="WinterIsComing!"
+db_user="user_name"
+db_password="password"
 db_port="5433"
 "#;
         let config_string = config.to_string();
@@ -191,8 +172,8 @@ output_folder_path="E:\\MDR source data\\Geonames\\outputs"
 
 [database]
 db_host="localhost"
-db_user="postgres"
-db_password="WinterIsComing!"
+db_user="user_name"
+db_password="password"
 db_port="5433"
 "#;
         let config_string = config.to_string();
