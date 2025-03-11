@@ -39,7 +39,7 @@ impl CountryVecs{
 
     pub async fn store_data(&self, pool : &Pool<Postgres>) -> Result<PgQueryResult, AppError> {
 
-        let sql = r#"INSERT INTO loc.countries (id, rank, iso_code, country_name, continent, tld, capital) 
+        let sql = r#"INSERT INTO geo.countries (id, rank, iso_code, country_name, continent, tld, capital) 
             SELECT * FROM UNNEST($1::int[], $2::int[], $3::text[], $4::text[], $5::text[], $6::text[], $7::text[]);"#;
 
         sqlx::query(&sql)

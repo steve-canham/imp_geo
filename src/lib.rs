@@ -40,7 +40,6 @@ pub async fn run(args: Vec<OsString>) -> Result<(), AppError> {
         lang_codes::create_lang_code_tables(&pool).await?;
         let file_name = "iso-languagecodes.txt";
         lang_codes::import_data(&params.data_folder, file_name, &pool).await?;
-        lang_codes::transfer_data(&pool).await?;
 
         // Do Alt Names - import second, as this data is needed by later imports
 
@@ -48,7 +47,7 @@ pub async fn run(args: Vec<OsString>) -> Result<(), AppError> {
         let file_name = "alternateNamesV2.txt";
         alt_names::import_data(&params.data_folder, file_name, &pool, latin_only).await?;
 
-        // Admins 1 and 2 data - also used below.
+        // Admins 1 and 2 data.
 
         admins::create_admins_tables(&pool).await?;
         let file_name = "admin1CodesASCII.txt";
@@ -56,19 +55,19 @@ pub async fn run(args: Vec<OsString>) -> Result<(), AppError> {
         let file_name = "admin2Codes.txt";
         admins::import_data(&params.data_folder, file_name, &pool).await?;
 
-        // Countries data
+        // Countries data.
 
         countries::create_country_tables(&pool).await?;
         let file_name = "countryInfo.txt";
         countries::import_data(&params.data_folder, file_name, &pool).await?;
 
-        // Cities data
+        // Cities data.
 
         cities::create_city_tables(&pool).await?;
         let file_name = "cities5000.txt";
         cities::import_data(&params.data_folder, file_name, &pool).await?;
 
-        // Scope data
+        // Scope data.
 
         scopes::create_scope_tables(&pool).await?;
         let file_name = "no-country.txt";

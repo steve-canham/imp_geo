@@ -40,7 +40,7 @@ impl CityVecs{
 
     pub async fn store_data(&self, pool : &Pool<Postgres>) -> Result<PgQueryResult, AppError> {
 
-        let sql = r#"INSERT INTO loc.cities (id, name, disamb_type, disamb_code, country_code, lat, lng) 
+        let sql = r#"INSERT INTO geo.cities (id, name, disamb_type, disamb_code, country_code, lat, lng) 
             SELECT * FROM UNNEST($1::int[], $2::text[], $3::text[], $4::text[], $5::text[], $6::float[], $7::float[]);"#;
 
         sqlx::query(&sql)

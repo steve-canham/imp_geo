@@ -8,8 +8,8 @@ use log::info;
 
 pub async fn create_city_tables(pool: &Pool<Postgres>) -> Result<(), AppError> {
 
-    let sql = r#"drop table if exists loc.cities;
-                create table loc.cities
+    let sql = r#"drop table if exists geo.cities;
+                create table geo.cities
                 (
                     id                    int primary key
                   , name                  varchar
@@ -28,8 +28,8 @@ pub async fn create_city_tables(pool: &Pool<Postgres>) -> Result<(), AppError> {
         .await.map_err(|e| AppError::SqlxError(e, sql.to_string()))?;
 
 
-    let sql = r#"drop table if exists loc.city_names;
-            create table loc.city_names
+    let sql = r#"drop table if exists geo.city_names;
+            create table geo.city_names
             (
                   id                    int
                 , city_name             varchar
@@ -39,10 +39,9 @@ pub async fn create_city_tables(pool: &Pool<Postgres>) -> Result<(), AppError> {
                 , country_name          varchar
                 , alt_name              varchar
                 , langlist              varchar
-                , source                varchar
             );
-            create index city_name_alt_name on loc.city_names(alt_name);
-            create index city_name on loc.city_names(id);"#;
+            create index city_name_alt_name on geo.city_names(alt_name);
+            create index city_name on geo.city_names(id);"#;
 
 
     sqlx::raw_sql(sql).execute(pool)
@@ -59,13 +58,17 @@ pub async fn import_data(data_folder: &PathBuf, source_file_name: &str, pool: &P
     remove_dup_cities(pool).await?;
     create_city_names(pool).await?;
     add_missing_city_names(pool).await?;
-    delete_dup_city_names(pool).await
+    delete_dup_city_names(pool).await?;
+
+    transfer_names_to_mdr(pool).await?;
+    make_mdr_related_changes_1(pool).await
+
 }
 
 
 async fn update_cities_data(pool: &Pool<Postgres>) -> Result<(), AppError> {
 
-    let sql = r#"update loc.cities g
+    let sql = r#"update geo.cities g
                  set country_id = null
                  where country_code = 'none'"#;
 
@@ -73,26 +76,26 @@ async fn update_cities_data(pool: &Pool<Postgres>) -> Result<(), AppError> {
         .await.map_err(|e| AppError::SqlxError(e, sql.to_string()))?;
 
 
-    let sql = r#"update loc.cities g
+    let sql = r#"update geo.cities g
                  set country_id = c.id,
                  country_name = c.country_name
-                 from loc.countries c
+                 from geo.countries c
                  where g.country_code = c.iso_code"#;
 
     sqlx::raw_sql(sql).execute(pool)
         .await.map_err(|e| AppError::SqlxError(e, sql.to_string()))?;
 
-    let sql = r#"update loc.cities g
+    let sql = r#"update geo.cities g
         set disamb_code = null
         where disamb_code = 'none'"#;
 
     sqlx::raw_sql(sql).execute(pool)
         .await.map_err(|e| AppError::SqlxError(e, sql.to_string()))?;
 
-    let sql = r#"update loc.cities c
+    let sql = r#"update geo.cities c
                  set disamb_id = a.id,
                  disamb_name = a.name 
-                 from geo.adm1s a
+                 from src.adm1s a
                  where c.disamb_code = a.code
                  and c.disamb_type = 'admin1'"#;
 
@@ -101,10 +104,10 @@ async fn update_cities_data(pool: &Pool<Postgres>) -> Result<(), AppError> {
 
     info!("{} city records updated with admin1 details", res.rows_affected());
 
-    let sql = r#"update loc.cities c
+    let sql = r#"update geo.cities c
                  set disamb_id = a.id,
                  disamb_name = a.name 
-                 from geo.adm2s a
+                 from src.adm2s a
                  where c.disamb_code = a.code
                  and c.disamb_type = 'admin2'"#;
 
@@ -116,28 +119,29 @@ async fn update_cities_data(pool: &Pool<Postgres>) -> Result<(), AppError> {
     Ok(())
 }
 
+
 async fn remove_dup_cities(pool: &Pool<Postgres>) -> Result<(), AppError> {
 
     // Deals with dup cities in same disamb area and country 
 
     let sql = r#"SET client_min_messages TO WARNING; 
-                drop table if exists loc.temp_dup_cities;
-                drop table if exists loc.temp_dup_city_matches;
+                drop table if exists geo.temp_dup_cities;
+                drop table if exists geo.temp_dup_city_matches;
                 
-                create table loc.temp_dup_cities as 
+                create table geo.temp_dup_cities as 
                 select  
                 name, country_name, disamb_name, count(id)
-                from loc.cities 
+                from geo.cities 
                 group by name, country_name, disamb_name
                 having count(id) > 1;"#;
 
     sqlx::raw_sql(sql).execute(pool)
         .await.map_err(|e| AppError::SqlxError(e, sql.to_string()))?;      
 
-    let sql = r#"create table loc.temp_dup_city_matches as 
+    let sql = r#"create table geo.temp_dup_city_matches as 
                 select c.*, true as to_delete 
-                from loc.cities c
-                inner join loc.temp_dup_cities t
+                from geo.cities c
+                inner join geo.temp_dup_cities t
                 on c.country_name = t.country_name
                 and c.disamb_name = t.disamb_name
                 and c.name = t.name
@@ -146,11 +150,11 @@ async fn remove_dup_cities(pool: &Pool<Postgres>) -> Result<(), AppError> {
     sqlx::raw_sql(sql).execute(pool)
         .await.map_err(|e| AppError::SqlxError(e, sql.to_string()))?;
 
-    let sql = r#"update loc.temp_dup_city_matches m
+    let sql = r#"update geo.temp_dup_city_matches m
                 set to_delete = false
                 from 
                 (  select c.name, min(c.id) as min
-                from loc.temp_dup_city_matches c
+                from geo.temp_dup_city_matches c
                 group by c.name, c.country_name, c.disamb_name
                 ) s
                 where m.id = s.min;"#;
@@ -158,13 +162,13 @@ async fn remove_dup_cities(pool: &Pool<Postgres>) -> Result<(), AppError> {
     sqlx::raw_sql(sql).execute(pool)
         .await.map_err(|e| AppError::SqlxError(e, sql.to_string()))?;
 
-        let sql = r#"delete from loc.cities c
-                using loc.temp_dup_city_matches m
+        let sql = r#"delete from geo.cities c
+                using geo.temp_dup_city_matches m
                 where c.id = m.id
                 and m.to_delete = true;
 
-                drop table loc.temp_dup_cities;
-                drop table loc.temp_dup_city_matches;"#;
+                drop table geo.temp_dup_cities;
+                drop table geo.temp_dup_city_matches;"#;
 
     let res = sqlx::raw_sql(sql).execute(pool)
         .await.map_err(|e| AppError::SqlxError(e, sql.to_string()))?;
@@ -177,12 +181,12 @@ async fn remove_dup_cities(pool: &Pool<Postgres>) -> Result<(), AppError> {
 
 async fn create_city_names(pool: &Pool<Postgres>) -> Result<(), AppError> {
     
-    let sql = r#"insert into loc.city_names (id, city_name, disamb_id, 
-         disamb_name, country_id, country_name, alt_name, langlist, source)
+    let sql = r#"insert into geo.city_names (id, city_name, disamb_id, 
+         disamb_name, country_id, country_name, alt_name, langlist)
          select c.id, c.name, c.disamb_id, c.disamb_name, c.country_id, 
-         c.country_name, a.alt_name, a.langs, 'geonames'
-         from loc.cities c 
-         inner join geo.alt_names a
+         c.country_name, a.alt_name, a.langs
+         from geo.cities c 
+         inner join src.alt_names a
          on c.id = a.id;"#;
 
     let res = sqlx::raw_sql(sql).execute(pool)
@@ -201,28 +205,28 @@ async fn add_missing_city_names(pool: &Pool<Postgres>) -> Result<(), AppError> {
     // names are in the city_names table
 
     let sql = r#"SET client_min_messages TO WARNING; 
-         drop table if exists loc.temp_city_match;
+         drop table if exists geo.temp_city_match;
          
-         create table loc.temp_city_match as 
+         create table geo.temp_city_match as 
          select *
-         from loc.city_names
+         from geo.city_names
          where city_name = alt_name;"#;
 
     sqlx::raw_sql(sql).execute(pool)
          .await.map_err(|e| AppError::SqlxError(e, sql.to_string()))?;
      
-    let sql = r#"insert into loc.city_names
+    let sql = r#"insert into geo.city_names
          (id, city_name, disamb_id, disamb_name, 
-         country_id, country_name, alt_name, source)
+         country_id, country_name, alt_name)
          select distinct n.id, n.city_name, 
          n.disamb_id, n.disamb_name, n.country_id, 
-         n.country_name, n.city_name as alt_name, n.source
-         from loc.city_names n
-         left join loc.temp_city_match m
+         n.country_name, n.city_name as alt_name
+         from geo.city_names n
+         left join geo.temp_city_match m
          on n.id = m.id
          where m.id is null;
          
-         drop table loc.temp_city_match;"#;
+         drop table geo.temp_city_match;"#;
 
     let res = sqlx::raw_sql(sql).execute(pool)
     .await.map_err(|e| AppError::SqlxError(e, sql.to_string()))?;
@@ -238,12 +242,12 @@ async fn delete_dup_city_names(pool: &Pool<Postgres>) -> Result<(), AppError> {
     // Deals with dup city names in same disamb area and country 
 
     let sql = r#"SET client_min_messages TO WARNING; 
-            drop table if exists loc.temp_dup_city_names;
-            create table loc.temp_dup_city_names
+            drop table if exists geo.temp_dup_city_names;
+            create table geo.temp_dup_city_names
             as
             select  
             country_name, alt_name, count(id)
-            from loc.city_names 
+            from geo.city_names 
             group by country_name, alt_name
             having count(id) > 1
             order by count(id) desc"#;
@@ -255,14 +259,14 @@ async fn delete_dup_city_names(pool: &Pool<Postgres>) -> Result<(), AppError> {
     // i.e. identify the name records that match duplicated
     // combinations and remove if they are not the main city name  
 
-    let sql = r#"delete from loc.city_names n
-            using loc.temp_dup_city_names d
+    let sql = r#"delete from geo.city_names n
+            using geo.temp_dup_city_names d
             where d.country_name = n.country_name
             and d.alt_name = n.alt_name
             and d.alt_name <> n.city_name;
             
             SET client_min_messages TO WARNING; 
-            drop table if exists loc.temp_dup_city_names;"#;
+            drop table if exists geo.temp_dup_city_names;"#;
 
     let res = sqlx::raw_sql(sql).execute(pool)
         .await.map_err(|e| AppError::SqlxError(e, sql.to_string()))?;
@@ -273,114 +277,208 @@ async fn delete_dup_city_names(pool: &Pool<Postgres>) -> Result<(), AppError> {
 }
 
 
+async fn transfer_names_to_mdr(pool: &Pool<Postgres>) -> Result<(), AppError> {
+
+    let sql = r#"SET client_min_messages TO WARNING; 
+    drop table if exists mdr.city_names;
+    create table mdr.city_names
+            (
+                  id                    int
+                , alt_name              varchar
+                , city_name             varchar
+                , disamb_id             int
+                , disamb_name           varchar
+                , country_id            int
+                , country_name          varchar
+                , source                varchar
+            );
+            create index city_name_id on mdr.city_names(id);
+            create index city_name_alt_name on mdr.city_names(alt_name);
+            create index city_name_name on mdr.city_names(city_name);
+
+            
+    insert into mdr.city_names (id, alt_name, city_name, disamb_id, 
+            disamb_name, country_id, country_name, source) 
+            select id, lower(alt_name), city_name, disamb_id, 
+            disamb_name, country_id, country_name, 'geonames'
+            from geo.city_names"#;
+
+    sqlx::raw_sql(sql).execute(pool)
+    .await.map_err(|e| AppError::SqlxError(e, sql.to_string()))?;    
+
+    Ok(())
+}
+
+
+async fn make_mdr_related_changes_1(pool: &Pool<Postgres>) -> Result<(), AppError> {
+
+    // Below are MDR specific related changes, to suypport better matching....
+
+    // to avoid some very strange city allocations
+
+    let sql = r#"delete from mdr.city_names where alt_name = 'Chicago' and disamb_name = 'Ohio';
+    delete from mdr.city_names where alt_name = 'New York' and disamb_name = 'Nebraska';"#;
+
+    sqlx::raw_sql(sql).execute(pool)
+    .await.map_err(|e| AppError::SqlxError(e, sql.to_string()))?;    
+
+    // to add some additional city names used within the mdr
+ 
+    let sql = r#"insert into mdr.city_names(id, alt_name, city_name, disamb_id, disamb_name, country_id, country_name, source)
+    select id, 'new york', city_name, disamb_id, disamb_name, country_id, country_name, 'mdr'
+    from mdr.city_names where city_name = 'New York City' and alt_name = 'new york city';
+
+    insert into mdr.city_names(id, alt_name, city_name, disamb_id, disamb_name, country_id, country_name, source)
+    select id, 'bucuresti', city_name, disamb_id, disamb_name, country_id, country_name, 'mdr'
+    from mdr.city_names
+    where city_name ='Bucharest' and alt_name = 'bucharest';
+
+    insert into mdr.city_names(id, alt_name, city_name, disamb_id, disamb_name, country_id, country_name, source)
+    select id, 'besancon', city_name, disamb_id, disamb_name, country_id, country_name, 'mdr'
+    from mdr.city_names
+    where city_name ='Besançon' and alt_name = 'besançon';
+
+    insert into mdr.city_names(id, alt_name, city_name, disamb_id, disamb_name, country_id, country_name, source)
+    select id, 'clermont ferrand', city_name, disamb_id, disamb_name, country_id, country_name, 'mdr'
+    from mdr.city_names
+    where city_name = 'Clermont-Ferrand' and alt_name = 'clermont-ferrand';"#; 
+
+    sqlx::raw_sql(sql).execute(pool)
+    .await.map_err(|e| AppError::SqlxError(e, sql.to_string()))?;    
+
+    let sql = r#"insert into mdr.city_names(id, alt_name, city_name, disamb_id, disamb_name, country_id, country_name, source)
+    select id, 'tubingen', city_name, disamb_id, disamb_name, country_id, country_name, 'mdr'
+    from mdr.city_names
+    where city_name = 'Tübingen' and alt_name = 'tübingen'; 
+
+    insert into mdr.city_names(id, alt_name, city_name, disamb_id, disamb_name, country_id, country_name, source)
+    select id, 'wuerzburg', city_name, disamb_id, disamb_name, country_id, country_name, 'mdr'
+    from mdr.city_names
+    where city_name = 'Würzburg' and alt_name = 'würzburg'; 
+
+    insert into mdr.city_names(id, alt_name, city_name, disamb_id, disamb_name, country_id, country_name, source)
+    select id, 'luebeck', city_name, disamb_id, disamb_name, country_id, country_name, 'mdr'
+    from mdr.city_names
+    where city_name = 'Lübeck' and alt_name = 'lübeck'; 
+
+    insert into mdr.city_names(id, alt_name, city_name, disamb_id, disamb_name, country_id, country_name, source)
+    select id, 'munchen', city_name, disamb_id, disamb_name, country_id, country_name, 'mdr'
+    from mdr.city_names
+    where city_name = 'Munich' and alt_name = 'munich';"#; 
+
+    sqlx::raw_sql(sql).execute(pool)
+    .await.map_err(|e| AppError::SqlxError(e, sql.to_string()))?;    
+
+    let sql = r#"insert into mdr.city_names(id, alt_name, city_name, disamb_id, disamb_name, country_id, country_name, source)
+    select id, 'kanagawa', city_name, disamb_id, disamb_name, country_id, country_name, 'mdr'
+    from mdr.city_names
+    where city_name = 'Yokohama' and alt_name = 'yokohama'; 
+
+    insert into mdr.city_names(id, alt_name, city_name, disamb_id, disamb_name, country_id, country_name, source)
+    select id, 'saint-petersburg', city_name, disamb_id, disamb_name, country_id, country_name, 'mdr'
+    from mdr.city_names
+    where city_name = 'Saint Petersburg' and alt_name = 'saint petersburg';
+
+    insert into mdr.city_names(id, alt_name, city_name, disamb_id, disamb_name, country_id, country_name, source)
+    select id, 'saint-petersburg', city_name, disamb_id, disamb_name, country_id, country_name, 'mdr'
+    from mdr.city_names
+    where city_name = 'St. Petersburg' and alt_name = 'saint petersburg';
+
+    insert into mdr.city_names(id, alt_name, city_name, disamb_id, disamb_name, country_id, country_name, source)
+    select id, 'caba', city_name, disamb_id, disamb_name, country_id, country_name, 'mdr'
+    from mdr.city_names
+    where city_name = 'Buenos Aires' and country_name = 'Argentina' and alt_name = 'buenos aires'; 
+
+    insert into mdr.city_names(id, alt_name, city_name, disamb_id, disamb_name, country_id, country_name, source)
+    select id, 'ciudad autonoma de buenos aires', city_name, disamb_id, disamb_name, country_id, country_name, 'mdr'
+    from mdr.city_names
+    where city_name = 'Buenos Aires' and country_name = 'Argentina' and alt_name = 'buenos aires';"#; 
+
+    sqlx::raw_sql(sql).execute(pool)
+    .await.map_err(|e| AppError::SqlxError(e, sql.to_string()))?;    
+
+    Ok(())
+}
+
+
 
 /*
 
-Below are MDR specific related changes, to suypport better matching....
+insert into mdr.city_names(id, alt_name, city_name, disamb_id, disamb_name, country_id, country_name, source)
+select 4735966, 'Temple, ambig_id, disambig_name, country_id, country_name, 'Temple', 'mdr'
+from mdr.city_names
+where city_name = 'Dallas' and alt_name = 'Dallas' 
 
--- to avoid some very strange city allocations
-
---delete from loc.city_names where alt_name = 'Chicago' and disamb_name = 'Ohio';
---delete from loc.city_names where alt_name = 'New York' and disamb_name = 'Nebraska';
-
-
-insert into loc.city_names(id, city_name, disamb_id, disamb_name, country_id, country_name, alt_name, source )
-select id, city_name, disambig_id, disambig_name, country_id, country_name, 'New York', 'mdr'
-from ctx.city_names where city_name = 'New York City' and alt_name = 'New York City'
-
-insert into ctx.city_names(geoname_id, city_name, disambig_id, disambig_name, country_id, country_name, alt_name, source )
-select 4460162, 'Chapel Hill', disambig_id, disambig_name, country_id, country_name, 'Chapel Hill', 'mdr'
-from ctx.city_names
-where geoname_id = 4464368 and alt_name = 'Durham'
-
-insert into ctx.city_names(geoname_id, city_name, disambig_id, disambig_name, country_id, country_name, alt_name, source )
+insert into mdr.city_names(id, city_name, disambig_id, disambig_name, country_id, country_name, alt_name, source )
 select 5193342, 'Hershey', disambig_id, disambig_name, country_id, country_name, 'Hershey', 'mdr'
-from ctx.city_names
+from mdr.city_names
 where geoname_id = 5192726 and alt_name = 'Harrisburg'
 
-insert into ctx.city_names(geoname_id, city_name, disambig_id, disambig_name, country_id, country_name, alt_name, source )
-select geoname_id, city_name, disambig_id, disambig_name, country_id, country_name, 'Bucuresti', 'mdr'
-from ctx.city_names
-where city_name ='Bucharest' and alt_name = 'Bucharest'
+insert into mdr.city_names(id, city_name, disamb_id, disamb_name, country_id, country_name, alt_name, source )
+select 4460162, 'chapel hill', disamb_id, disamg_name, country_id, country_name, 'Chapel Hill', 'mdr'
+from mdr.city_names
+where geoname_id = 4464368 and alt_name = 'durham'
 
-insert into ctx.city_names(geoname_id, city_name, disambig_id, disambig_name, country_id, country_name, alt_name, source )
-select geoname_id, city_name, disambig_id, disambig_name, country_id, country_name, 'Praha 2', 'mdr'
-from ctx.city_names
-where city_name ='Prague' and alt_name = 'Prague'
 
-insert into ctx.city_names(geoname_id, city_name, disambig_id, disambig_name, country_id, country_name, alt_name, source )
-select geoname_id, city_name, disambig_id, disambig_name, country_id, country_name, 'Besancon', 'mdr'
-from ctx.city_names
-where city_name ='Besançon' and alt_name = 'Besançon'
 
-insert into ctx.city_names(geoname_id, city_name, disambig_id, disambig_name, country_id, country_name, alt_name, source )
-select geoname_id, city_name, disambig_id, disambig_name, country_id, country_name, 'Saint-Petersburg', 'mdr'
-from ctx.city_names
-where city_name = 'Saint Petersburg' and alt_name = 'Saint Petersburg'
-
-insert into ctx.city_names(geoname_id, city_name, disambig_id, disambig_name, country_id, country_name, alt_name, source )
-select geoname_id, city_name, disambig_id, disambig_name, country_id, country_name, 'Saint-Petersburg', 'mdr'
-from ctx.city_names
-where city_name = 'St. Petersburg' and alt_name = 'Saint Petersburg'
-
-insert into ctx.city_names(geoname_id, city_name, disambig_id, disambig_name, country_id, country_name, alt_name, source )
+insert into mdr.city_names(geoname_id, city_name, disambig_id, disambig_name, country_id, country_name, alt_name, source )
 select geoname_id, city_name, disambig_id, disambig_name, country_id, country_name, 'Frankfurt-oder', 'mdr'
-from ctx.city_names
+from mdr.city_names
 where city_name = 'Frankfurt (Oder)' and alt_name = 'Frankfurt (Oder)'
 
-insert into ctx.city_names(geoname_id, city_name, disambig_id, disambig_name, country_id, country_name, alt_name, source )
+insert into mdr.city_names(geoname_id, city_name, disambig_id, disambig_name, country_id, country_name, alt_name, source )
 select geoname_id, city_name, disambig_id, disambig_name, country_id, country_name, 'Frankfurt / Oder', 'mdr'
-from ctx.city_names
+from mdr.city_names
 where city_name = 'Frankfurt (Oder)' and alt_name = 'Frankfurt (Oder)'
 
-insert into ctx.city_names(geoname_id, city_name, disambig_id, disambig_name, country_id, country_name, alt_name, source )
+insert into mdr.city_names(geoname_id, city_name, disambig_id, disambig_name, country_id, country_name, alt_name, source )
 select geoname_id, city_name, disambig_id, disambig_name, country_id, country_name, 'Frankfurt-oder', 'mdr'
-from ctx.city_names
+from mdr.city_names
 where city_name = 'Frankfurt (Oder)' and alt_name = 'Frankfurt (Oder)'
 
-insert into ctx.city_names(geoname_id, city_name, disambig_id, disambig_name, country_id, country_name, alt_name, source )
+insert into mdr.city_names(geoname_id, city_name, disambig_id, disambig_name, country_id, country_name, alt_name, source )
 select geoname_id, city_name, disambig_id, disambig_name, country_id, country_name, 'Frankfurt Oder', 'mdr'
-from ctx.city_names
+from mdr.city_names
 where city_name = 'Frankfurt (Oder)' and alt_name = 'Frankfurt (Oder)'
 
-insert into ctx.city_names(geoname_id, city_name, disambig_id, disambig_name, country_id, country_name, alt_name, source )
+insert into mdr.city_names(geoname_id, city_name, disambig_id, disambig_name, country_id, country_name, alt_name, source )
 select geoname_id, city_name, disambig_id, disambig_name, country_id, country_name, 'Frankfurt, Oder', 'mdr'
-from ctx.city_names
+from mdr.city_names
 where city_name = 'Frankfurt (Oder)' and alt_name = 'Frankfurt (Oder)'
 
-insert into ctx.city_names(geoname_id, city_name, disambig_id, disambig_name, country_id, country_name, alt_name, source )
+insert into mdr.city_names(geoname_id, city_name, disambig_id, disambig_name, country_id, country_name, alt_name, source )
 select geoname_id, city_name, disambig_id, disambig_name, country_id, country_name, 'Frankfurt/ Oder Brandenburg', 'mdr'
-from ctx.city_names
+from mdr.city_names
 where city_name = 'Frankfurt (Oder)' and alt_name = 'Frankfurt (Oder)'
 
-insert into ctx.city_names(geoname_id, city_name, disambig_id, disambig_name, country_id, country_name, alt_name, source )
+insert into mdr.city_names(geoname_id, city_name, disambig_id, disambig_name, country_id, country_name, alt_name, source )
 select geoname_id, city_name, disambig_id, disambig_name, country_id, country_name, 'Frankfurt on the Main', 'mdr'
-from ctx.city_names
+from mdr.city_names
 where city_name = 'Frankfurt am Main' and alt_name = 'Frankfurt am Main'
 
-insert into ctx.city_names(geoname_id, city_name, disambig_id, disambig_name, country_id, country_name, alt_name, source )
+insert into mdr.city_names(geoname_id, city_name, disambig_id, disambig_name, country_id, country_name, alt_name, source )
 select geoname_id, city_name, disambig_id, disambig_name, country_id, country_name, 'Frankfurt/ Main', 'mdr'
-from ctx.city_names
+from mdr.city_names
 where city_name = 'Frankfurt am Main' and alt_name = 'Frankfurt am Main'
 
-insert into ctx.city_names(geoname_id, city_name, disambig_id, disambig_name, country_id, country_name, alt_name, source )
+insert into mdr.city_names(geoname_id, city_name, disambig_id, disambig_name, country_id, country_name, alt_name, source )
 select geoname_id, city_name, disambig_id, disambig_name, country_id, country_name, 'Frankfurt/a. M. -Höchst', 'mdr'
-from ctx.city_names
+from mdr.city_names
 where city_name = 'Frankfurt am Main' and alt_name = 'Frankfurt am Main'
 
-insert into ctx.city_names(geoname_id, city_name, disambig_id, disambig_name, country_id, country_name, alt_name, source )
+insert into mdr.city_names(geoname_id, city_name, disambig_id, disambig_name, country_id, country_name, alt_name, source )
 select geoname_id, city_name, disambig_id, disambig_name, country_id, country_name, 'Frankfurt/Höchst', 'mdr'
-from ctx.city_names
+from mdr.city_names
 where city_name = 'Frankfurt am Main' and alt_name = 'Frankfurt am Main'
 
-insert into ctx.city_names(geoname_id, city_name, disambig_id, disambig_name, country_id, country_name, alt_name, source )
+insert into mdr.city_names(geoname_id, city_name, disambig_id, disambig_name, country_id, country_name, alt_name, source )
 select geoname_id, city_name, disambig_id, disambig_name, country_id, country_name, 'Frankfurt/M', 'mdr'
-from ctx.city_names
+from mdr.city_names
 where city_name = 'Frankfurt am Main' and alt_name = 'Frankfurt am Main'
 
-insert into ctx.city_names(geoname_id, city_name, disambig_id, disambig_name, country_id, country_name, alt_name, source )
+insert into mdr.city_names(geoname_id, city_name, disambig_id, disambig_name, country_id, country_name, alt_name, source )
 select geoname_id, city_name, disambig_id, disambig_name, country_id, country_name, 'Frankfurt/M.', 'mdr'
-from ctx.city_names
+from mdr.city_names
 where city_name = 'Frankfurt am Main' and alt_name = 'Frankfurt am Main'
 
 
@@ -412,21 +510,21 @@ Frankfurt Main
 Frankfurt N/A
 
 
-insert into ctx.city_names(geoname_id, city_name, disambig_id, disambig_name, country_id, country_name, alt_name, source )
-select geoname_id, 'Clermont-Ferrand', disambig_id, disambig_name, country_id, country_name, 'Clermont Ferrand', 'mdr'
-from ctx.city_names
-where city_name = 'Clermont-Ferrand' and alt_name = 'Clermont-Ferrand' 
 
+insert into mdr.city_names(id, alt_name, city_name, disamb_id, disamb_name, country_id, country_name, source)
+select id, 'praha 2', city_name, disamb_id, disamb_name, country_id, country_name, 'mdr'
+from mdr.city_names
+where city_name ='Prague' and alt_name = 'prague'
 
-insert into ctx.city_names(geoname_id, city_name, disambig_id, disambig_name, country_id, country_name, alt_name, source )
+insert into mdr.city_names(geoname_id, city_name, disambig_id, disambig_name, country_id, country_name, alt_name, source )
 select geoname_id, 'Prague', disambig_id, disambig_name, country_id, country_name, 'Prague 2', 'mdr'
-from ctx.city_names
+from mdr.city_names
 where city_name = 'Prague' and alt_name = 'Prague' 
 
 
-insert into ctx.city_names(geoname_id, city_name, disambig_id, disambig_name, country_id, country_name, alt_name, source )
+insert into mdr.city_names(geoname_id, city_name, disambig_id, disambig_name, country_id, country_name, alt_name, source )
 select geoname_id, 'Prague', disambig_id, disambig_name, country_id, country_name, 'Praha 3', 'mdr'
-from ctx.city_names
+from mdr.city_names
 where city_name = 'Prague' and alt_name = 'Prague' 
 
 --and
@@ -436,65 +534,31 @@ Praha 6
 Praha 8
 Praha 10
 
-insert into ctx.city_names(geoname_id, city_name, disambig_id, disambig_name, country_id, country_name, alt_name, source )
-select geoname_id, 'Tübingen', disambig_id, disambig_name, country_id, country_name, 'Tubingen', 'mdr'
-from ctx.city_names
-where city_name = 'Tübingen' and alt_name = 'Tübingen' 
 
-insert into ctx.city_names(geoname_id, city_name, disambig_id, disambig_name, country_id, country_name, alt_name, source )
-select geoname_id, 'Würzburg', disambig_id, disambig_name, country_id, country_name, 'Wuerzburg', 'mdr'
-from ctx.city_names
-where city_name = 'Würzburg' and alt_name = 'Würzburg' 
-
-insert into ctx.city_names(geoname_id, city_name, disambig_id, disambig_name, country_id, country_name, alt_name, source )
-select geoname_id, 'Lübeck', disambig_id, disambig_name, country_id, country_name, 'Luebeck', 'mdr'
-from ctx.city_names
-where city_name = 'Lübeck' and alt_name = 'Lübeck' 
-
-insert into ctx.city_names(geoname_id, city_name, disambig_id, disambig_name, country_id, country_name, alt_name, source )
-select geoname_id, 'Munich', disambig_id, disambig_name, country_id, country_name, 'Munchen', 'mdr'
-from ctx.city_names
-where city_name = 'Munich' and alt_name = 'Munich' 
-
-insert into ctx.city_names(geoname_id, city_name, disambig_id, disambig_name, country_id, country_name, alt_name, source )
-select geoname_id, 'Yokohama' disambig_id, disambig_name, country_id, country_name, 'Kanagawa', 'mdr'
-from ctx.city_names
-where city_name = 'Yokohama' and alt_name = 'Yokohama' 
-
-insert into ctx.city_names(geoname_id, city_name, disambig_id, disambig_name, country_id, country_name, alt_name, source )
+insert into mdr.city_names(geoname_id, city_name, disambig_id, disambig_name, country_id, country_name, alt_name, source )
 select 4735966, 'Temple, ambig_id, disambig_name, country_id, country_name, 'Temple', 'mdr'
-from ctx.city_names
+from mdr.city_names
 where city_name = 'Dallas' and alt_name = 'Dallas' 
 
-insert into ctx.city_names(geoname_id, city_name, disambig_id, disambig_name, country_id, country_name, alt_name, source )
+insert into mdr.city_names(geoname_id, city_name, disambig_id, disambig_name, country_id, country_name, alt_name, source )
 select 3074967, 'Hradec Králové, 3339540, 'Královéhradecký kraj', country_id, country_name, 'Temple', 'mdr'
-from ctx.city_names
+from mdr.city_names
 where city_name = 'Prague' and alt_name = 'Prague' 
 
-insert into ctx.city_names(geoname_id, city_name, disambig_id, disambig_name, country_id, country_name, alt_name, source )
+insert into mdr.city_names(geoname_id, city_name, disambig_id, disambig_name, country_id, country_name, alt_name, source )
 select 4719457, 'Plano', ambig_id, disambig_name, country_id, country_name, 'Plano', 'mdr'
-from ctx.city_names
+from mdr.city_names
 where city_name = 'Dallas' and alt_name = 'Dallas' 
 
-insert into ctx.city_names(geoname_id, city_name, disambig_id, disambig_name, country_id, country_name, alt_name, source )
+insert into mdr.city_names(geoname_id, city_name, disambig_id, disambig_name, country_id, country_name, alt_name, source )
 select 4719457, 'Newport Beach', ambig_id, disambig_name, country_id, country_name, 'Newport Beach', 'mdr'
-from ctx.city_names
+from mdr.city_names
 where city_name = 'Irvine' and alt_name = 'Irvine'  and country_name = 'United States'
 
-insert into ctx.city_names(geoname_id, city_name, disambig_id, disambig_name, country_id, country_name, alt_name, source )
-select geoname_id, 'Buenos Aires', ambig_id, disambig_name, country_id, country_name, 'Caba', 'mdr'
-from ctx.city_names
-where city_name = 'Buenos Aires' and alt_name = 'Buenos Aires' 
 
-insert into ctx.city_names(geoname_id, city_name, disambig_id, disambig_name, country_id, country_name, alt_name, source )
-select geoname_id, 'Buenos Aires', ambig_id, disambig_name, country_id, country_name, 'Ciudad Autonoma de Buenos Aires', 'mdr'
-from ctx.city_names
-where city_name = 'Buenos Aires' and alt_name = 'Buenos Aires' 
-
-
-insert into ctx.city_names(geoname_id, city_name, disambig_id, disambig_name, country_id, country_name, alt_name, source )
+insert into mdr.city_names(geoname_id, city_name, disambig_id, disambig_name, country_id, country_name, alt_name, source )
 select 500784, 'Royal Oak', ambig_id, disambig_name, country_id, country_name, 'Royal Oak', 'mdr'
-from ctx.city_names
+from mdr.city_names
 where city_name = 'Detroit' and alt_name = 'Detroit' 
 
 */

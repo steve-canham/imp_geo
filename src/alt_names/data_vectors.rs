@@ -28,7 +28,7 @@ impl AltRecVecs{
 
     pub async fn store_data(&self, pool : &Pool<Postgres>) -> Result<PgQueryResult, AppError> {
 
-        let sql = r#"INSERT INTO geo.alt_src_names (geo_id, alt_name, lang) 
+        let sql = r#"INSERT INTO src.alt_src_names (geo_id, alt_name, lang) 
             SELECT * FROM UNNEST($1::int[], $2::text[], $3::text[])"#;
 
         sqlx::query(sql)

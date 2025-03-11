@@ -62,7 +62,7 @@
             .short('n')
             .long("non_latin")
             .required(false)
-            .help("A flag signifying that non Latin names shopuld be included (are excludede by dfefault)")
+            .help("A flag signifying that non Latin names shopuld be included (are excluded by default)")
             .action(clap::ArgAction::SetTrue)
          )
         .arg(
