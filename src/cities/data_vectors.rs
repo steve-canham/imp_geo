@@ -10,6 +10,7 @@ pub struct CityVecs {
     pub country_codes: Vec<String>,
     pub lats: Vec<Option<f64>>,
     pub lngs: Vec<Option<f64>>,
+    pub pops: Vec<Option<i64>>,
 }
 
 
@@ -23,6 +24,7 @@ impl CityVecs{
             country_codes: Vec::with_capacity(vsize),
             lats: Vec::with_capacity(vsize),
             lngs: Vec::with_capacity(vsize),   
+            pops: Vec::with_capacity(vsize),
         }
     }
 
@@ -35,17 +37,19 @@ impl CityVecs{
         self.country_codes.push(r.country_code.clone());
         self.lats.push(r.lat);
         self.lngs.push(r.lng);
+        self.pops.push(r.population);
     }
 
 
     pub async fn store_data(&self, pool : &Pool<Postgres>) -> Result<PgQueryResult, AppError> {
 
-        let sql = r#"INSERT INTO geo.cities (id, name, disamb_type, disamb_code, country_code, lat, lng) 
-            SELECT * FROM UNNEST($1::int[], $2::text[], $3::text[], $4::text[], $5::text[], $6::float[], $7::float[]);"#;
+        let sql = r#"INSERT INTO src.cities (id, name, disamb_type, disamb_code, country_code, lat, lng, pop) 
+            SELECT * FROM UNNEST($1::int[], $2::text[], $3::text[], $4::text[], $5::text[], 
+                    $6::float[], $7::float[], $8::int[]);"#;
 
         sqlx::query(&sql)
         .bind(&self.ids).bind(&self.names).bind(&self.disamb_types).bind(&self.disamb_codes)
-        .bind(&self.country_codes).bind(&self.lats).bind(&self.lngs)
+        .bind(&self.country_codes).bind(&self.lats).bind(&self.lngs).bind(&self.pops)
         .execute(pool).await
         .map_err(|e| AppError::SqlxError(e, sql.to_string()))
     }

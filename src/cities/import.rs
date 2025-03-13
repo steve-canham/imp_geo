@@ -39,6 +39,7 @@ pub struct CityRec {
     pub country_code: String,
     pub lat: Option<f64>,
     pub lng: Option<f64>,
+    pub population: Option<i64>,
 }
 
 
@@ -89,12 +90,13 @@ pub async fn import_cities_data(data_folder: &PathBuf, source_file_name: &str, p
 
         let city_rec = CityRec {
             id: source.geonameid,
-            name: source.name,
+            name: source.name.replace("'", "’"),
             disamb_type: disamb_type,
             disamb_code: disamb_code,
             country_code: country_code,
             lat: source.latitude,
             lng: source.longitude,
+            population: source.population,
         };
 
 
@@ -104,7 +106,7 @@ pub async fn import_cities_data(data_folder: &PathBuf, source_file_name: &str, p
     }
             
     dv.store_data(&pool).await?;
-    info!("{} records processed from {} to geo.cities", i, source_file_name);
+    info!("{} records processed from {} to src.cities", i, source_file_name);
 
     Ok(())
 }
