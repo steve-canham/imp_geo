@@ -1,7 +1,7 @@
 mod data_vectors;
 mod import;
 
-use sqlx::{Pool, Postgres};
+use sqlx::{Pool, Postgres, postgres::PgQueryResult};
 use crate::AppError;
 use std::path::PathBuf;
 use log::info;
@@ -77,7 +77,10 @@ pub async fn import_data(data_folder: &PathBuf, source_file_name: &str, pool: &P
     add_mdr_names_2(pool).await?; 
     add_mdr_names_3(pool).await?; 
     add_mdr_names_4(pool).await?; 
-    add_mdr_names_5(pool).await 
+    add_mdr_names_5(pool).await?;
+    update_mdr_names(pool).await?;
+
+    Ok(())
 }
 
 
@@ -156,11 +159,12 @@ async fn adjust_names(pool: &Pool<Postgres>) -> Result<(), AppError> {
     Ok(())
 }
 
+
 async fn create_mdr_country_names(pool: &Pool<Postgres>) -> Result<(), AppError> {
 
     let sql = r#"insert into mdr.country_names (comp_name, country_id, iso_code, 
     country_name, continent, source)
-    select lower(replace(cn.alt_name,'.', '')), c.id, c.iso_code, 
+    select distinct lower(replace(cn.alt_name,'.', '')), c.id, c.iso_code, 
     c.country_name, c.continent, 'geonames'
     from geo.country_names cn
     inner join geo.countries c
@@ -170,12 +174,11 @@ async fn create_mdr_country_names(pool: &Pool<Postgres>) -> Result<(), AppError>
     .await.map_err(|e| AppError::SqlxError(e, sql.to_string()))?;
 
     info!("{} country name records transferred to mdr schema", res.rows_affected());
-
     Ok(())
 }
 
 
-async fn add_mdr_names_1(pool: &Pool<Postgres>) -> Result<(), AppError> {
+async fn add_mdr_names_1(pool: &Pool<Postgres>) -> Result<PgQueryResult, AppError> {
 
     // insert comp_name, country, 'mdr' as source
     // update mdr sourced records with country's id, iso_code, continent
@@ -269,13 +272,11 @@ async fn add_mdr_names_1(pool: &Pool<Postgres>) -> Result<(), AppError> {
         vec!["jiangsu", "China"],
     ];
 
-    add_country_recs(params_set, pool).await?;
-
-    Ok(())
+    add_country_recs(params_set, pool).await
 }
 
 
-async fn add_mdr_names_2(pool: &Pool<Postgres>) -> Result<(), AppError> {
+async fn add_mdr_names_2(pool: &Pool<Postgres>) -> Result<PgQueryResult, AppError> {
 
     let params_set: Vec<Vec<&str>> = vec![
         vec!["macao", "China"],
@@ -316,8 +317,8 @@ async fn add_mdr_names_2(pool: &Pool<Postgres>) -> Result<(), AppError> {
         vec!["czechi", "Czechia"],
         vec!["the czech republic", "Czechia"],
         vec!["zech republic", "Czechia"],
-        vec!["congo -  democratic republic", "Democratic Republic of the Congo"],
-        vec!["congo -  the democratic republic of the", "Democratic Republic of the Congo"],
+        vec!["congo - democratic republic", "Democratic Republic of the Congo"],
+        vec!["congo - the democratic republic of the", "Democratic Republic of the Congo"],
         vec!["congo democratic republic", "Democratic Republic of the Congo"],
         vec!["the democratic republic of the congo", "Democratic Republic of the Congo"],
         vec!["zaire", "Democratic Republic of the Congo"],
@@ -365,13 +366,11 @@ async fn add_mdr_names_2(pool: &Pool<Postgres>) -> Result<(), AppError> {
         vec!["micronesia (federated states of)", "Micronesia"],
     ];
 
-    add_country_recs(params_set, pool).await?;
-
-    Ok(())
+    add_country_recs(params_set, pool).await
 }
 
 
-async fn add_mdr_names_3(pool: &Pool<Postgres>) -> Result<(), AppError> {
+async fn add_mdr_names_3(pool: &Pool<Postgres>) -> Result<PgQueryResult, AppError> {
 
     let params_set: Vec<Vec<&str>> = vec![
         vec!["modalvia", "Moldova"],
@@ -409,8 +408,6 @@ async fn add_mdr_names_3(pool: &Pool<Postgres>) -> Result<(), AppError> {
         vec!["russian fenderation", "Russia"],
         vec!["russianfederation", "Russia"],
         vec!["russina fed", "Russia"],
-        vec!["rwanda", "Rwanda"],
-        vec!["st vincent & grenadines", "Saint Vincent and the Grenadines"],
         vec!["santo tome and principe", "Sao Tome and Principe"],
         vec!["republic of serbia", "Serbia"],
         vec!["shingapore", "Singapore"],
@@ -451,7 +448,7 @@ async fn add_mdr_names_3(pool: &Pool<Postgres>) -> Result<(), AppError> {
         vec!["esp", "Spain"],
         vec!["spainm", "Spain"],
         vec!["spein", "Spain"],
-        vec!["ascension and tristan da cunha", "St Helena"],
+        vec!["ascension and tristan da cunha", "Saint Helena"],
         vec!["sweden etc", "Sweden"],
         vec!["sweeded", "Sweden"],
         vec!["sweeden", "Sweden"],
@@ -461,14 +458,11 @@ async fn add_mdr_names_3(pool: &Pool<Postgres>) -> Result<(), AppError> {
         vec!["switzerlad", "Switzerland"],
     ];
 
-    add_country_recs(params_set, pool).await?;
-
-    Ok(())
-
+    add_country_recs(params_set, pool).await
 }
 
 
-async fn add_mdr_names_4(pool: &Pool<Postgres>) -> Result<(), AppError> {
+async fn add_mdr_names_4(pool: &Pool<Postgres>) -> Result<PgQueryResult, AppError> {
 
     let params_set: Vec<Vec<&str>> = vec![
         vec!["swizerland", "Switzerland"],
@@ -480,7 +474,6 @@ async fn add_mdr_names_4(pool: &Pool<Postgres>) -> Result<(), AppError> {
         vec!["taiwan (roc)", "Taiwan"],
         vec!["taiwan china", "Taiwan"],
         vec!["taiwan province of china", "Taiwan"],
-        vec!["taiwan roc", "Taiwan"],
         vec!["taiwian", "Taiwan"],
         vec!["tiwan", "Taiwan"],
         vec!["tayikistan", "Tajikistan"],
@@ -494,7 +487,6 @@ async fn add_mdr_names_4(pool: &Pool<Postgres>) -> Result<(), AppError> {
         vec!["maetha", "Thailand"],
         vec!["pathumthani", "Thailand"],
         vec!["tahiland", "Thailand"],
-        vec!["tailand", "Thailand"],
         vec!["thai", "Thailand"],
     ];
 
@@ -533,7 +525,7 @@ async fn add_mdr_names_4(pool: &Pool<Postgres>) -> Result<(), AppError> {
     let params_set: Vec<Vec<&str>> = vec![
         vec!["turkey etc", "Turkey"],
         vec!["turkiye", "Turkey"],
-        vec!["turks & caicos islands", "Turks and Caicos islands"],
+        vec!["turks & caicos islands", "Turks and Caicos Islands"],
         vec!["ukrine", "Ukraine"],
         vec!["england", "United Kingdom"],
         vec!["gbr", "United Kingdom"],
@@ -558,14 +550,11 @@ async fn add_mdr_names_4(pool: &Pool<Postgres>) -> Result<(), AppError> {
         vec!["united kingdom of great britain and northern irela", "United Kingdom"],
     ];
 
-    add_country_recs(params_set, pool).await?;
-
-    Ok(())
-
+    add_country_recs(params_set, pool).await
 }
 
 
-async fn add_mdr_names_5(pool: &Pool<Postgres>) -> Result<(), AppError> {
+async fn add_mdr_names_5(pool: &Pool<Postgres>) -> Result<PgQueryResult, AppError> {
 
     let params_set: Vec<Vec<&str>> = vec![
         vec!["united kingdom of great britainand northern irelan", "United Kingdom"],
@@ -637,14 +626,11 @@ async fn add_mdr_names_5(pool: &Pool<Postgres>) -> Result<(), AppError> {
         vec!["south america", "SA"],
     ];
 
-    add_continent_recs(params_set, pool).await?;
-
-    Ok(())
-
+    add_continent_recs(params_set, pool).await
 }
 
 
-async fn add_country_recs(params: Vec<Vec<&str>>, pool: &Pool<Postgres>) -> Result<(), AppError> {
+async fn add_country_recs(params: Vec<Vec<&str>>, pool: &Pool<Postgres>) -> Result<PgQueryResult, AppError> {
 
     let mut sql = "".to_string();
     for p in params {
@@ -654,38 +640,54 @@ async fn add_country_recs(params: Vec<Vec<&str>>, pool: &Pool<Postgres>) -> Resu
                 + &format!("values('{}', '{}', 'mdr');", p[0], p[1]) + r#"
 
                 "#;
-
          sql.push_str(&this_sql);
     }
-
     sqlx::raw_sql(&sql).execute(pool)
-             .await.map_err(|e| AppError::SqlxError(e, sql.to_string()))?;
-
-    Ok(())
-
+             .await.map_err(|e| AppError::SqlxError(e, sql.to_string()))
 }
 
 
-async fn add_continent_recs(params: Vec<Vec<&str>>, pool: &Pool<Postgres>) -> Result<(), AppError> {
+async fn add_continent_recs(params: Vec<Vec<&str>>, pool: &Pool<Postgres>) -> Result<PgQueryResult, AppError> {
 
     let mut sql = "".to_string();
     for p in params {
-         
          let this_sql = r#"insert into mdr.country_names(comp_name, continent, source) 
                 "#.to_string()
                 + &format!("values('{}', '{}', 'mdr');", p[0], p[1]) + r#"
 
                 "#;
-
          sql.push_str(&this_sql);
     }
 
     sqlx::raw_sql(&sql).execute(pool)
-             .await.map_err(|e| AppError::SqlxError(e, sql.to_string()))?;
-
-    Ok(())
+             .await.map_err(|e| AppError::SqlxError(e, sql.to_string()))
 
 }
 
 
+async fn update_mdr_names(pool: &Pool<Postgres>) -> Result<PgQueryResult, AppError> {
+
+    let sql = r#"update mdr.country_names cn
+                    set country_id = g.id,
+                    iso_code = g.iso_code,
+                    continent = g.continent
+                    from geo.countries g
+                    where
+                    cn.country_name = g.country_name
+                    and cn.source = 'mdr'
+                    and cn.country_name is not null;
+
+
+                    update mdr.country_names cn
+                    set country_id = -5,
+                    iso_code = continent,
+                    country_name = 'continent'
+                    where cn.source = 'mdr'
+                    and cn.country_name is null;
+                    ;"#;
+    
+    sqlx::raw_sql(sql).execute(pool)
+             .await.map_err(|e| AppError::SqlxError(e, sql.to_string()))
+
+}
 

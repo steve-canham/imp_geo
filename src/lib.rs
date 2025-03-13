@@ -33,7 +33,7 @@ pub async fn run(args: Vec<OsString>) -> Result<(), AppError> {
         // The latin_only parameter makes the process include Latin alternative names only
         // By default it is true, but is switchable to false using the -n command flag.
 
-        let _latin_only = !flags.include_nonlatin;
+        let latin_only = !flags.include_nonlatin;
 
         // Do language codes - import first, as required by alt name processing below
 
@@ -43,9 +43,9 @@ pub async fn run(args: Vec<OsString>) -> Result<(), AppError> {
 
         // Do Alt Names - import second, as this data is needed by later imports
 
-        //alt_names::create_alt_name_table(&pool).await?;
-        //let file_name = "alternateNamesV2.txt";
-        //alt_names::import_data(&params.data_folder, file_name, &pool, latin_only).await?;
+        alt_names::create_alt_name_table(&pool).await?;
+        let file_name = "alternateNamesV2.txt";
+        alt_names::import_data(&params.data_folder, file_name, &pool, latin_only).await?;
 
         // Admins 1 and 2 data.
 
