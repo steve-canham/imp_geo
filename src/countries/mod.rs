@@ -212,7 +212,6 @@ async fn add_mdr_names_1(pool: &Pool<Postgres>) -> Result<PgQueryResult, AppErro
 
     add_country_recs(params_set, pool).await?;
 
-
     let params_set: Vec<Vec<&str>> = vec![
         vec!["2/5000   china", "China"],
         vec!["bei jing", "China"],
@@ -319,6 +318,7 @@ async fn add_mdr_names_2(pool: &Pool<Postgres>) -> Result<PgQueryResult, AppErro
         vec!["zech republic", "Czechia"],
         vec!["congo - democratic republic", "Democratic Republic of the Congo"],
         vec!["congo - the democratic republic of the", "Democratic Republic of the Congo"],
+        vec!["congo, the democratic republic of the", "Democratic Republic of the Congo"],
         vec!["congo democratic republic", "Democratic Republic of the Congo"],
         vec!["the democratic republic of the congo", "Democratic Republic of the Congo"],
         vec!["zaire", "Democratic Republic of the Congo"],
@@ -335,6 +335,7 @@ async fn add_mdr_names_2(pool: &Pool<Postgres>) -> Result<PgQueryResult, AppErro
         vec!["guinea-bisseu", "Guinea-Bissau"],
         vec!["hangary", "Hungary"],
     ];
+
 
     add_country_recs(params_set, pool).await?;
 
@@ -387,6 +388,8 @@ async fn add_mdr_names_3(pool: &Pool<Postgres>) -> Result<PgQueryResult, AppErro
         vec!["korea north", "North Korea"],
         vec!["macedonia - the former yugoslav republic of", "North Macedonia"],
         vec!["the former yugoslav rep of macedonia", "North Macedonia"],
+        vec!["palestinian territories, occupied", "Palestinian Territory"],
+        vec!["palestinian territory, occupied", "Palestinian Territory"],
         vec!["paraguar", "Paraguay"],
         vec!["peru rep", "Peru"],
         vec!["philippine", "Philippines"],
@@ -593,6 +596,7 @@ async fn add_mdr_names_5(pool: &Pool<Postgres>) -> Result<PgQueryResult, AppErro
         vec!["usa (including puerto rico)", "United States"],
         vec!["nitedstates of america", "United States"],
         vec!["virgin islands - us", "US Virgin Islands"],
+        vec!["virgin Islands (u.s.)", "US Virgin Islands"],
         vec!["venezuela (bolivarian republic of)", "Venezuela"],
         vec!["socialist republic of viet nam", "Vietnam"],
         vec!["viet", "Vietnam"],
