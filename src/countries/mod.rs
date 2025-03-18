@@ -596,7 +596,7 @@ async fn add_mdr_names_5(pool: &Pool<Postgres>) -> Result<PgQueryResult, AppErro
         vec!["usa (including puerto rico)", "United States"],
         vec!["nitedstates of america", "United States"],
         vec!["virgin islands - us", "US Virgin Islands"],
-        vec!["virgin Islands (u.s.)", "US Virgin Islands"],
+        vec!["virgin islands (u.s.)", "US Virgin Islands"],
         vec!["venezuela (bolivarian republic of)", "Venezuela"],
         vec!["socialist republic of viet nam", "Vietnam"],
         vec!["viet", "Vietnam"],
