@@ -4,8 +4,8 @@ The geonames data is regularly updated, and provides a great resource for identi
 as free text into systems, perhaps in a variety of languages.
 
 Data is stored in a Postgres database called 'geo'. <br/>
-The system first imports the geonames data to a 'src' schema, from a variety of source files, creating tables with matching names (see Downloading the Data below).<br/> 
-It then uses that data to create 5 main tables of data, in a schema called 'geo':
+The system first imports the geonames data to a 'geo' schema, from a variety of source files, creating tables with matching names (see Downloading the Data below).<br/> 
+It then uses that data to create 5 main tables of data, in a schema called 'src':
 <ul>
 <li>countries - basic data on names and codes for each of about 250 listed countries. Those with a population of over 320,000 are ranked 1, the rest are ranked as 2.</li> 
 <li>country_names - for each country, the various names under which they are known in the Geonames system, including - in most cases - the language(s) of each name.</li>
@@ -13,22 +13,9 @@ It then uses that data to create 5 main tables of data, in a schema called 'geo'
 <li>city_names - for each city, the various names under which they are known in the Geonames system, including - in most cases - the language(s) of each name.</li>
 <li>regions - a subset of the geonames 'non-country' data listing the main regional, geopolitical, linguistic and continental groupings of countries. Such scopes can be used to support queries that target broader areas than individual countries.</li> 
 </ul>
-A few minor changes are made to the data in the geo tables, to make it more accurate. In particular a) Serbia and Montenegro is removed from the countries list (it ceased to exist in 2006), 
-b) Hong Kong and Macau are removed from the countries list, as they are increasingly integrated into mainland China, and c) Cities listed as being in Hoing Kong and Macao are transferred to China 
+A few minor changes are made to the data in the src tables, to make it more accurate. In particular a) Serbia and Montenegro is removed from the countries list (it ceased to exist in 2006), 
+b) Hong Kong and Macau are removed from the countries list, as they are increasingly integrated into mainland China, and c) Cities listed as being in Hong Kong and Macao are transferred to China 
 (though retain their original admin area codes). 
-
-The final stage is to create a set of tables in a schema called 'mdr'. This has tables designed to be used to match and code city and country data in the MDR system, where it is often input 
-as free text and therefore in a wide variety of spellings. Some tables therefore incorporating additional name variations derived from the MDR system. The tables are 
-<ul>
-<li>country_names - for each country, the various names under which they are known in the Geonames and MDR systems, along with ISO codes and continent codes. A key field is 'comp_name', a lowercase version of each name, shorn of periods, designed  
-to be used for comparison and identification purposes.</li>
-<li>city_names - for each city, the various names under which they are known in the Geonames system, plus additional names for some cities identified within the MDR. Again a 'comp_name' field provides a lower case version for 
-comparison and identification purposes.</li>
-<li>geo_scopes - an augmented import of the geo.regions data, with additional information about the 'parents' and 'members' of each scope. This data represents the various 'geographic scopes' that some organisations work within, 
-or are designed to support. This is available for use within the mdr.</li> 
-<li>scope_membership - for each scope, provides the member countries as a set of records.</li> 
-</ul>
-
 
 <h2>How to use the system  (notes to self)</h2>
 
@@ -83,7 +70,7 @@ There is only one flag available to the user. -n ('cargo run -- -n') will includ
 By default non-latin names are excluded as in many use cases, at least in Europe, they would not be meaningful or offered to the user. Using the -n flag makes both the names tables about 
 25% larger and makes the process a little slower, though it still takes just a few minutes.
 
-The additional names derived from the MDR are added manually as part of the code (as simple insert statements). This keeps all the relevant data in one place, rather than having to 
-maintain and load separate files. It is the responsibility of client systems, such as the MDR, to identify geographical entities that are not matched by the data, so that the code 
-can be periodically updated (probably every three to six months). In use, the mdr schema tables are designed to be imported as foreign tables into the database(s) making use of them.
+Additional names, i.e. as derived from the MDR, are added when constructing contextual geographic data for that system, and <i>not</i> as part of the imp_ror process. 
+It is the responsibility of client systems, such as the MDR, to identify geographical entities that are not matched by the data, so that the code 
+can be periodically updated (probably every three to six months).
 

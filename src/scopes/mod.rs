@@ -7,8 +7,8 @@ use std::path::PathBuf;
 
 pub async fn create_scope_tables(pool: &Pool<Postgres>) -> Result<(), AppError> {
 
-    let sql = r#"drop table if exists geo.regions;
-            create table geo.regions
+    let sql = r#"drop table if exists src.regions;
+            create table src.regions
             (
                   id               int
                 , feature_code     varchar

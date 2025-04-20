@@ -106,7 +106,7 @@ pub async fn import_cities_data(data_folder: &PathBuf, source_file_name: &str, p
     }
             
     dv.store_data(&pool).await?;
-    info!("{} records processed from {} to src.cities", i, source_file_name);
+    info!("{} records processed from {} to geo.cities", i, source_file_name);
 
     Ok(())
 }

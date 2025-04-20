@@ -28,7 +28,7 @@ impl AdminVecs{
 
     pub async fn store_data(&self, pool : &Pool<Postgres>, table_name: &str) -> Result<PgQueryResult, AppError> {
 
-        let sql = r#"INSERT INTO src."#.to_string() + table_name + r#"(id, code, name) 
+        let sql = r#"INSERT INTO geo."#.to_string() + table_name + r#"(id, code, name) 
             SELECT * FROM UNNEST($1::int[], $2::text[], $3::text[]);"#;
 
         sqlx::query(&sql)

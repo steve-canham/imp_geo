@@ -138,8 +138,8 @@ pub async fn import_alt_name_data(data_folder: &PathBuf, source_file_name: &str,
 
 async fn create_collecting_table(pool: &Pool<Postgres>) -> Result<PgQueryResult, AppError> {
     
-    let sql = r#"drop table if exists src.alt_src_names;
-    create table src.alt_src_names
+    let sql = r#"drop table if exists geo.alt_src_names;
+    create table geo.alt_src_names
     (
         geo_id       int
       , alt_name     varchar
@@ -153,12 +153,12 @@ async fn create_collecting_table(pool: &Pool<Postgres>) -> Result<PgQueryResult,
 
 async fn transfer_data(pool: &Pool<Postgres>) -> Result<PgQueryResult, AppError>  {
 
-    let sql = r#"insert into src.alt_names (id, alt_name, langs)
+    let sql = r#"insert into geo.alt_names (id, alt_name, langs)
         select geo_id, alt_name,
 	    string_agg(c.name, ', ')
-        from src.alt_src_names n
+        from geo.alt_src_names n
         left join 
-            (select * from src.lang_codes where code_type = '639-1') c
+            (select * from geo.lang_codes where code_type = '639-1') c
         on n.lang = c.code
         group by geo_id, alt_name
         order by geo_id, alt_name"#;

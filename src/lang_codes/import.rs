@@ -60,7 +60,7 @@ pub async fn import_lang_code_data(data_folder: &PathBuf, source_file_name: &str
          }
               
          dv.store_data(&pool).await?;
-         info!("{} records processed from {} to src.lang_codes", i, source_file_name);
+         info!("{} records processed from {} to geo.lang_codes", i, source_file_name);
                  
          Ok(())
 }

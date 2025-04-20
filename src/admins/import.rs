@@ -60,7 +60,7 @@ pub async fn import_admins_data(data_folder: &PathBuf, source_file_name: &str, p
          }
               
          dv.store_data(&pool, table_name).await?;
-         info!("{} records processed from {} to src.{}", i, source_file_name, table_name);
+         info!("{} records processed from {} to geo.{}", i, source_file_name, table_name);
                  
          Ok(())
 }

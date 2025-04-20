@@ -7,14 +7,14 @@ use std::path::PathBuf;
 
 pub async fn create_alt_name_table(pool: &Pool<Postgres>) -> Result<(), AppError> {
 
-    let sql = r#"drop table if exists src.alt_names;
-    create table src.alt_names
+    let sql = r#"drop table if exists geo.alt_names;
+    create table geo.alt_names
     (
         id           int   
       , alt_name 	 varchar  
       , langs        varchar
     );
-    create index alt_names_idx on src.alt_names(id);"#;
+    create index alt_names_idx on geo.alt_names(id);"#;
    
     sqlx::raw_sql(sql).execute(pool)
         .await.map_err(|e| AppError::SqlxError(e, sql.to_string()))?;

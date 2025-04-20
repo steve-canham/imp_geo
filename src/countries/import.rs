@@ -41,6 +41,7 @@ pub struct CountryRec {
     pub country_name: String,
     pub continent: String,
     pub tld: String,
+    pub languages:  String,
     pub capital: String,
 }
 
@@ -75,6 +76,7 @@ pub async fn import_countries_data(data_folder: &PathBuf, source_file_name: &str
             country_name: source.country.trim().replace(".", "").replace("'", "’"),
             continent: source.continent,
             tld: source.tld.unwrap_or("".to_string()),
+            languages: source.languages.unwrap_or("".to_string()),
             capital: source.capital.unwrap_or("".to_string()).trim().replace(".", "").replace("'", "’"),
         };
 
@@ -84,7 +86,7 @@ pub async fn import_countries_data(data_folder: &PathBuf, source_file_name: &str
     }
             
     dv.store_data(&pool).await?;
-    info!("{} records processed from {} to src.countries", i, source_file_name);
+    info!("{} records processed from {} to geo.countries", i, source_file_name);
 
     Ok(())
 }

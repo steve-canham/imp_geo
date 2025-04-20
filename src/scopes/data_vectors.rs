@@ -30,7 +30,7 @@ impl ScopeVecs{
 
     pub async fn store_data(&self, pool : &Pool<Postgres>) -> Result<PgQueryResult, AppError> {
 
-        let sql = r#"INSERT INTO geo.regions (id, feature_code, name, members) 
+        let sql = r#"INSERT INTO src.regions (id, feature_code, name, members) 
             SELECT * FROM UNNEST($1::int[], $2::text[], $3::text[], $4::text[]);"#;
 
         sqlx::query(&sql)

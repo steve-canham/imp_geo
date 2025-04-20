@@ -17,8 +17,8 @@ pub async fn create_lang_code_tables(pool: &Pool<Postgres>) -> Result<(), AppErr
     sqlx::raw_sql(sql).execute(pool)
         .await.map_err(|e| AppError::SqlxError(e, sql.to_string()))?;
 
-    let sql = r#"drop table if exists src.lang_src_codes;
-                create table src.lang_src_codes
+    let sql = r#"drop table if exists geo.lang_src_codes;
+                create table geo.lang_src_codes
                 (
                     c3           varchar
                   , c2           varchar
@@ -29,8 +29,8 @@ pub async fn create_lang_code_tables(pool: &Pool<Postgres>) -> Result<(), AppErr
     sqlx::raw_sql(sql).execute(pool)
         .await.map_err(|e| AppError::SqlxError(e, sql.to_string()))?;
 
-    let sql = r#"drop table if exists src.lang_codes;
-                create table src.lang_codes
+    let sql = r#"drop table if exists geo.lang_codes;
+                create table geo.lang_codes
                 (
                     code         varchar primary key
                   , name         varchar  
@@ -53,16 +53,16 @@ pub async fn import_data(data_folder: &PathBuf, source_file_name: &str, pool: &P
 
 pub async fn transfer_data(pool: &Pool<Postgres>) -> Result<(), AppError> {
 
-    let sql = r#"insert into src.lang_codes (code, name, code_type)
+    let sql = r#"insert into geo.lang_codes (code, name, code_type)
                 select * from
                 (select c2 as code, name, '639-2' as code_type
-                from src.lang_src_codes where c3 = '' and c2 not in ('frr', 'srn', 'syc', 'rup'))
+                from geo.lang_src_codes where c3 = '' and c2 not in ('frr', 'srn', 'syc', 'rup'))
                 union
                 (select c3 as code, name, '639-3' as code_type
-                from src.lang_src_codes where c3 <> '')
+                from geo.lang_src_codes where c3 <> '')
                 union
                 (select c1 as code, name, '639-1' as code_type
-                from src.lang_src_codes where c1 <> '')
+                from geo.lang_src_codes where c1 <> '')
                 order by code"#;
 
     sqlx::raw_sql(sql).execute(pool)
@@ -74,7 +74,7 @@ pub async fn transfer_data(pool: &Pool<Postgres>) -> Result<(), AppError> {
 
 pub async fn delete_src_table(pool: &Pool<Postgres>) -> Result<(), AppError> {
 
-    let sql = r#"drop table if exists src.lang_src_codes;"#;
+    let sql = r#"drop table if exists geo.lang_src_codes;"#;
 
     sqlx::raw_sql(sql).execute(pool)
         .await.map_err(|e| AppError::SqlxError(e, sql.to_string()))?;

@@ -7,8 +7,8 @@ use std::path::PathBuf;
 
 pub async fn create_admins_tables(pool: &Pool<Postgres>) -> Result<(), AppError> {
 
-    let sql = r#"drop table if exists src.adm1s;
-                create table src.adm1s
+    let sql = r#"drop table if exists geo.adm1s;
+                create table geo.adm1s
                 (
                     id              int
                   , code            varchar   
@@ -18,8 +18,8 @@ pub async fn create_admins_tables(pool: &Pool<Postgres>) -> Result<(), AppError>
     sqlx::raw_sql(sql).execute(pool)
         .await.map_err(|e| AppError::SqlxError(e, sql.to_string()))?;
 
-    let sql = r#"drop table if exists src.adm2s;
-                create table src.adm2s
+    let sql = r#"drop table if exists geo.adm2s;
+                create table geo.adm2s
                 (
                     id              int
                   , code            varchar   

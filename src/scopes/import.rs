@@ -84,7 +84,7 @@ pub async fn import_scope_data(data_folder: &PathBuf, source_file_name: &str, po
     }
             
     dv.store_data(&pool).await?;
-    info!("{} records processed from {} to geo.regions", i, source_file_name);
+    info!("{} records processed from {} to src.regions", i, source_file_name);
 
     Ok(())
 }
