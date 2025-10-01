@@ -133,9 +133,8 @@ mod tests {
 
         let config = r#"
 [folders]
-data_folder_path="E:\\MDR source data\\Geonames\\data"
-log_folder_path="E:\\MDR source data\\Geonames\\logs"
-output_folder_path="E:\\MDR source data\\Geonames\\outputs"
+data_folder_path="/home/steve/Data/MDR source data/Geonames/data/Geonames 20251001"
+log_folder_path="/home/steve/Data/MDR source data/Geonames/logs"
 
 [database]
 db_host="localhost"
@@ -154,8 +153,8 @@ db_port="5433"
 
         assert_eq!(res.flags.import_data, true);
         assert_eq!(res.flags.test_run, false);
-        assert_eq!(res.data_folder, PathBuf::from("E:\\MDR source data\\Geonames\\data"));
-        assert_eq!(res.log_folder, PathBuf::from("E:\\MDR source data\\Geonames\\logs"));
+        assert_eq!(res.data_folder, PathBuf::from("/home/steve/Data/MDR source data/Geonames/data/Geonames 20251001"));
+        assert_eq!(res.log_folder, PathBuf::from("/home/steve/Data/MDR source data/Geonames/logs"));
 
     }
    
@@ -166,9 +165,8 @@ db_port="5433"
 
         let config = r#"
 [folders]
-data_folder_path="C:\\MDR source data\\Geonames\\data"
-log_folder_path="E:\\MDR source data\\Geonames\\logs"
-output_folder_path="E:\\MDR source data\\Geonames\\outputs"
+data_folder_path="/home/steve/Data/MDR source data/Geonames/data/Geonames 20251121"
+log_folder_path="/home/steve/Data/MDR source data/Geonames/data/Geonames 20251001""
 
 [database]
 db_host="localhost"

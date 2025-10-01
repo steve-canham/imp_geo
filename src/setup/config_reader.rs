@@ -196,113 +196,62 @@
          let config = r#"
  
  [folders]
- data_folder_path="E:\\MDR source data\\Geonames\\data"
- log_folder_path="E:\\MDR source data\\Geonames\\logs"
- 
+ data_folder_path="/home/steve/Data/MDR source data/Geonames/data/Geonames 20251001"
+ log_folder_path="/home/steve/Data/MDR source data/Geonames/data/Geonames 20251001"
+
  [database]
  db_host="localhost"
  db_user="user_name"
  db_password="password"
- db_port="5433"
+ db_port="5432"
  db_name="geo"
  "#;
          let config_string = config.to_string();
          let res = populate_config_vars(&config_string).unwrap();
-         assert_eq!(res.folders.data_folder_path, PathBuf::from("E:\\MDR source data\\Geonames\\data"));
-         assert_eq!(res.folders.log_folder_path, PathBuf::from("E:\\MDR source data\\Geonames\\logs"));
+         assert_eq!(res.folders.data_folder_path, PathBuf::from("/home/steve/Data/MDR source data/Geonames/data/Geonames 20251001"));
+         assert_eq!(res.folders.log_folder_path, PathBuf::from("/home/steve/Data/MDR source data/Geonames/data/Geonames 20251001"));
          assert_eq!(res.db_pars.db_host, "localhost");
          assert_eq!(res.db_pars.db_user, "user_name");
          assert_eq!(res.db_pars.db_password, "password");
-         assert_eq!(res.db_pars.db_port, 5433);
+         assert_eq!(res.db_pars.db_port, 5432);
          assert_eq!(res.db_pars.db_name, "geo");
      }
- 
- 
-     #[test]
-     fn check_config_with_missing_log_and_outputs_folders() {
- 
-         let config = r#"
- 
- [folders]
- data_folder_path="E:\\MDR source data\\Geonames\\data"
- src_file_name="alternateNamesV2.txt"
- 
- [database]
- db_host="localhost"
- db_user="user_name"
- db_password="password"
- db_port="5433"
- db_name="geo"
- "#;
-         let config_string = config.to_string();
-         let res = populate_config_vars(&config_string).unwrap();
-         assert_eq!(res.folders.data_folder_path, PathBuf::from("E:\\MDR source data\\Geonames\\data"));
-         assert_eq!(res.folders.log_folder_path, PathBuf::from("E:\\MDR source data\\Geonames\\data"));
-     }
- 
+    
  
      #[test]
-     fn check_config_with_blank_log_and_outputs_folders() {
+     fn check_config_with_blank_log_folders() {
  
          let config = r#"
  [folders]
- data_folder_path="E:\\MDR source data\\Geonames\\data"
+ data_folder_path="/home/steve/Data/MDR source data/Geonames/data/Geonames 20251001"
  log_folder_path=""
  
  [database]
  db_host="localhost"
  db_user="user_name"
  db_password="password"
- db_port="5433"
+ db_port="5432"
  db_name="geo"
  "#;
          let config_string = config.to_string();
          let res = populate_config_vars(&config_string).unwrap();
-         assert_eq!(res.folders.data_folder_path, PathBuf::from("E:\\MDR source data\\Geonames\\data"));
-         assert_eq!(res.folders.log_folder_path, PathBuf::from("E:\\MDR source data\\Geonames\\data"));
+         assert_eq!(res.folders.data_folder_path, PathBuf::from("/home/steve/Data/MDR source data/Geonames/data/Geonames 20251001"));
+         assert_eq!(res.folders.log_folder_path, PathBuf::from("/home/steve/Data/MDR source data/Geonames/data/Geonames 20251001"));
     }
- 
- 
-     #[test]
-     fn check_missing_data_details_become_empty_strings() {
- 
-         let config = r#"
- [folders]
- data_folder_path="E:\\MDR source data\\Geonames\\data"
- log_folder_path="E:\\MDR source data\\Geonames\\logs"
- 
- [database]
- db_host="localhost"
- db_user="user_name"
- db_password="password"
- db_port="5433"
- db_name="geo"
- "#;
-         let config_string = config.to_string();
-         let res = populate_config_vars(&config_string).unwrap();
-         assert_eq!(res.folders.data_folder_path, PathBuf::from("E:\\MDR source data\\Geonames\\data"));
-         assert_eq!(res.folders.log_folder_path, PathBuf::from("E:\\MDR source data\\Geonames\\logs"));
- 
-         assert_eq!(res.db_pars.db_host, "localhost");
-         assert_eq!(res.db_pars.db_user, "user_name");
-         assert_eq!(res.db_pars.db_password, "password");
-         assert_eq!(res.db_pars.db_port, 5433);
-         assert_eq!(res.db_pars.db_name, "geo");
-     }
- 
- 
+
+    
      #[test]
      #[should_panic]
      fn check_missing_data_folder_panics() {
      let config = r#"
  [folders]
- log_folder_path="E:\\MDR source data\\Geonames\\logs"
- 
+ log_folder_path="/home/steve/Data/MDR source data/Geonames/data/Geonames 20251001"
+  
  [database]
  db_host="localhost"
  db_user="user_name"
  db_password="password"
- db_port="5433"
+ db_port="5432"
  db_name="geo"
  "#;
          let config_string = config.to_string();
@@ -316,14 +265,14 @@
  
          let config = r#"
  [folders]
- data_folder_path="E:\\MDR source data\\Geonames\\data"
- log_folder_path="E:\\MDR source data\\Geonames\\logs"
- 
+ data_folder_path="/home/steve/Data/MDR source data/Geonames/data/Geonames 20251001"
+ log_folder_path="/home/steve/Data/MDR source data/Geonames/data/Geonames 20251001"
+  
  [database]
  db_host="localhost"
  db_user=""
  db_password="password"
- db_port="5433"
+ db_port="5432"
  db_name="geo"
  "#;
          let config_string = config.to_string();
@@ -336,9 +285,9 @@
  
          let config = r#"
  [folders]
- data_folder_path="E:\\MDR source data\\Geonames\\data"
- log_folder_path="E:\\MDR source data\\Geonames\\logs"
- 
+ data_folder_path="/home/steve/Data/MDR source data/Geonames/data/Geonames 20251001"
+ log_folder_path="/home/steve/Data/MDR source data/Geonames/data/Geonames 20251001"
+  
  [database]
  db_user="user_name"
  db_password="password"
@@ -358,8 +307,8 @@
  
          let config = r#"
  [folders]
- data_folder_path="E:\\MDR source data\\Geonames\\data"
- log_folder_path="E:\\MDR source data\\Geonames\\logs"
+ data_folder_path="/home/steve/Data/MDR source data/Geonames/data/Geonames 20251001"
+ log_folder_path="/home/steve/Data/MDR source data/Geonames/data/Geonames 20251001"
  
  [database]
  db_host="localhost"

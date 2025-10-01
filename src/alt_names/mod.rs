@@ -5,6 +5,7 @@ use sqlx::{Pool, Postgres};
 use crate::AppError;
 use std::path::PathBuf;
 
+
 pub async fn create_alt_name_table(pool: &Pool<Postgres>) -> Result<(), AppError> {
 
     let sql = r#"drop table if exists geo.alt_names;

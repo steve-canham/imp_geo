@@ -24,7 +24,7 @@ The data is obtained from GeoNames, based at <a href="https://www.geonames.org/"
 <i>‘a user-editable geographical database available and accessible through various web services, under a Creative Commons attribution license’, founded in late 2005. 
 As of 2025, GeoNames included ‘over 25 million geographical names and consists of over 12 million unique features whereof 4.8 million populated places and 18 million alternate names.'</i>
 
-First create a folder to receive the data files, e.g. 'E:\MDR source data\Geonames\data\Geonames 20250205’. 
+First create a folder to receive the data files, e.g. '/home/steve/Data/MDR source data/Geonames/data/Geonames 20251001$ ’. 
 Then go to <a href="https://download.geonames.org/export/dump/" target="_blank">https://download.geonames.org/export/dump/</a>, which provides a long list of GeoNames source files, as well as information (below the list) about file structure. 
 The following .txt files are required:
 <ul>
