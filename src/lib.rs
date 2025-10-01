@@ -72,7 +72,8 @@ pub async fn run(args: Vec<OsString>) -> Result<(), AppError> {
         scopes::create_scope_tables(&pool).await?;
         let file_name = "no-country.txt";
         scopes::import_data(&params.data_folder, file_name, &pool).await?;
-    }
+
+     }
 
      Ok(())  
 }

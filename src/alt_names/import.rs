@@ -158,7 +158,7 @@ async fn transfer_data(pool: &Pool<Postgres>) -> Result<PgQueryResult, AppError>
 	    string_agg(c.name, ', ')
         from geo.alt_src_names n
         left join 
-            (select * from geo.lang_codes where code_type = '639-1') c
+            (select * from src.lang_codes where code_type = '639-1') c
         on n.lang = c.code
         group by geo_id, alt_name
         order by geo_id, alt_name"#;

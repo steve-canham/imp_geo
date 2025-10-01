@@ -31,7 +31,7 @@ impl LangCodeVecs{
 
     pub async fn store_data(&self, pool : &Pool<Postgres>) -> Result<PgQueryResult, AppError> {
 
-        let sql = r#"INSERT INTO geo.lang_src_codes (c3, c2, c1, name) 
+        let sql = r#"INSERT INTO geo.lang_codes (c3, c2, c1, name) 
             SELECT * FROM UNNEST($1::text[], $2::text[], $3::text[], $4::text[]);"#;
 
         sqlx::query(&sql)
